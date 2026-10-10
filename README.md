@@ -7,6 +7,21 @@
 
 每支影片都是 **直式 9:16（1080×1920）**，適合放在手機短影音平台。影片只有轉場音效（打字時沒有聲音），另外附一份字幕檔（`.srt`），之後可以拿來配旁白。
 
+## 完整版
+
+8 集接成一部，開頭有一張目錄卡，總長約 8 分鐘：
+
+- 影片：[full-github-tutorial.mp4](videos/full-github-tutorial.mp4)（內含章節，播放器可以直接跳到某一步）
+- 字幕：[full-github-tutorial.srt](videos/full-github-tutorial.srt)
+- 章節時間：[full-github-tutorial-chapters.txt](videos/full-github-tutorial-chapters.txt)（YouTube 說明欄可以直接貼上）
+
+重新產生：先用 `build.sh` 做好 8 集，再執行 `./tools/build-full.sh`。
+
+## 講義
+
+- 修正後的講義：[handout/github-tutorial.md](handout/github-tutorial.md)
+- 修訂說明：[handout/CHANGES.md](handout/CHANGES.md)（每一處改了什麼、為什麼要改）
+
 ## 影片列表
 
 | 集數 | 講義段落 | 影片 | 字幕 |
@@ -71,6 +86,9 @@ lib/graph.js                 共用的 commit 圖形和小計算機畫法
 tools/record.mjs             用瀏覽器逐格錄製畫面
 tools/replay-lib.sh          replay.sh 共用的工具
 tools/calc-test.mjs          用真正的 script.js 跑講義 6.1 的記憶功能測試
+tools/build-full.sh          把 8 集接成完整版，合併字幕、加上章節
+full/title.html              完整版的開頭目錄卡
+handout/                     修正後的講義和修訂說明
 tools/sfx.py                 合成音效、輸出字幕檔
 build.sh                     一次完成錄製、音效、合併
 videos/                      完成的影片和字幕
@@ -108,10 +126,4 @@ videos/                      完成的影片和字幕
 
 ## 製作時發現的講義問題
 
-實際執行講義的指令時，發現下面幾個地方和講義寫的不一樣。影片都照實際的結果呈現。
-
-1. **6.1 記憶功能測試**：照講義的按鍵順序，有 3 個測試會失敗。按完 M+ 之後畫面上的數字不會清掉，接著輸入的數字會接在後面（例如測試 1 會得到 58，不是 8）。在每次輸入新數字前先按 C，5 個測試的結果才會和講義相同。可以用 `node tools/calc-test.mjs <script.js>` 自己確認。
-2. **8.4 刪除分支**：`git branch -d feature/scientific-v1` 會失敗，因為版本 1 沒有合併進 main。要用 `git branch -D` 才能刪除。第 8 集把這個錯誤訊息當成教學重點。
-3. **2.1 等號按鈕 hover 顏色**：講義寫 `#1976d2`，calculator-app 的 commit `7434ffb` 實際是 `#73eb97`。
-4. **3.2 百分比按鈕**：加上 % 按鈕後，計算機第一排會有 5 顆按鈕，「←」會被擠到下一排。這是講義程式碼真實的結果（第 3 集的小計算機也是這樣）。
-5. **1.1 私人 repository 與 GitHub Pages**：GitHub 免費方案的私人 repository 不能使用 GitHub Pages；學生若用免費帳號，需要把 repository 設成公開，或使用 GitHub Student Developer Pack。
+實際執行講義的指令時，發現有幾個地方的結果和講義寫的不一樣，例如 6.1 的測試步驟、7.6 的本機測試方法、8.4 的刪除分支。影片都照實際的結果呈現，講義也已經修正，詳見 [handout/CHANGES.md](handout/CHANGES.md)。
