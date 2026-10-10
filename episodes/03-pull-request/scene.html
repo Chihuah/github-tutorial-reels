@@ -32,8 +32,10 @@
 </head>
 <body>
 <script src="../../lib/reel.js"></script>
+<script src="../../lib/graph.js"></script>
 <script>
 const { clamp, ease, easeOut, backOut, lerp, mix, rgba, esc, $, wait, ev, step, typeCmd, out, cue, fly, pop } = Reel;
+const { since, node, label, grow, branchOff, mergeIn, line } = G;
 
 const GREEN = '#22c55e', PURPLE = '#a78bfa', ORANGE = '#f59e0b';
 Reel.setup({
@@ -176,28 +178,6 @@ ev('outro'); wait(3.6);
 // ---------- episode-specific rendering ----------
 const X = { a: 40, b: 150, f: 270, m: 400 };          // 3108cfa, 7434ffb, 17bde93, e5e29b9
 const LANES = { lo: { main: 150, feat: 64 }, re: { main: 140, feat: 58 } };
-const since = (at, t, d) => at === undefined ? 0 : clamp((t - at) / d);
-const FONT = 'font-family="JetBrains Mono, DejaVu Sans Mono, monospace"';
-
-function node(x, y, color, filled, appear, t) {
-  if (appear !== undefined && t < appear) return '';
-  const sc = appear === undefined ? 1 : backOut((t - appear) / 0.45);
-  let g = '';
-  if (appear !== undefined) {
-    const r = 1 - clamp((t - appear) / 0.8);
-    if (r > 0) g += `<circle cx="${x}" cy="${y}" r="${16 * sc + 10 * r}" fill="none" stroke="${color}" stroke-opacity="${0.6 * r}" stroke-width="3"/>`;
-  }
-  return g + `<circle cx="${x}" cy="${y}" r="${Math.max(0, 14 * sc)}" fill="${filled ? color : '#0c0c0f'}" stroke="${filled ? color : '#71717a'}" stroke-width="4"/>`;
-}
-function label(x, y, text, color, op = 1, bold = false) {
-  return `<text x="${x}" y="${y}" text-anchor="middle" ${FONT} font-size="18" fill="${color}" opacity="${op}" font-weight="${bold ? 600 : 400}">${text}</text>`;
-}
-// a path that is revealed from start to end as p goes 0..1
-function grow(d, color, p) {
-  if (p <= 0) return '';
-  return `<path d="${d}" fill="none" stroke="${color}" stroke-width="4" pathLength="1" stroke-dasharray="${p >= 1 ? 'none' : p + ' 1'}"/>`;
-}
-
 // k: 'lo' | 're'; o: times for the branch, its commit, the merge and branch deletion
 function drawRepo(k, o, t) {
   const color = k === 'lo' ? GREEN : PURPLE, { main: my, feat: fy } = LANES[k];
@@ -205,9 +185,9 @@ function drawRepo(k, o, t) {
   let g = `<line x1="0" y1="${my}" x2="${X.a}" y2="${my}" stroke="#3f3f46" stroke-width="4" stroke-dasharray="4 6"/>`;
   g += `<line x1="${X.a}" y1="${my}" x2="${X.b}" y2="${my}" stroke="#52525b" stroke-width="4"/>`;
   // branch-off curve and merge curve
-  g += grow(`M${X.b},${my - 14} C${X.b},${my - 60} ${X.b + 40},${fy} ${X.f - 14},${fy}`, ORANGE, easeOut(pF));
-  g += grow(`M${X.b + 14},${my} L${X.m - 14},${my}`, color, easeOut(pM));
-  g += grow(`M${X.f},${fy + 14} C${X.f},${my - 24} ${X.m - 64},${my - 12} ${X.m - 12},${my - 7}`, ORANGE, easeOut(pM));
+  g += grow(branchOff(X.b, my, X.f, fy), ORANGE, easeOut(pF));
+  g += grow(line(X.b, my, X.m), color, easeOut(pM));
+  g += grow(mergeIn(X.f, fy, X.m, my), ORANGE, easeOut(pM));
   // the new branch points at 7434ffb until its first commit: a dashed pointer
   const ptr = since(o.branch, t, 0.4) * (1 - since(o.featNode, t, 0.4));
   if (ptr > 0) g += `<path d="M${X.b},${my - 16} L${X.b},${fy} L${X.b + 20},${fy}" fill="none" stroke="${ORANGE}" stroke-width="2.5" stroke-dasharray="5 5" opacity="${ptr}"/>`;
