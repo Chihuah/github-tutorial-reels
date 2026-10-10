@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>用分支開發記憶功能</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@400;600&display=block" rel="stylesheet">
+<link rel="stylesheet" href="../../lib/reel.css">
+<style>
+.code{top:16px;height:158px;font-size:18px;line-height:22px;padding:8px 14px}
+.code .row{height:22px}
+.code .fname{color:#a1a1aa;font-size:17px}
+.code .fname em{font-style:normal;color:var(--orange);font-weight:600;margin-left:10px}
+.minicalc{top:16px;height:158px}
+.graph{height:260px}
+.head{position:absolute;font:700 15px/1 var(--mono);color:#0b0b0e;background:#38bdf8;border-radius:6px;padding:5px 8px;white-space:nowrap}
+.head:after{content:"";position:absolute;left:12px;bottom:-6px;border:6px solid transparent;border-bottom:0;border-top-color:#38bdf8}
+</style>
+</head>
+<body>
+<script src="../../lib/reel.js"></script>
+<script src="../../lib/graph.js"></script>
+<script>
+const { clamp, ease, easeOut, backOut, lerp, mix, rgba, esc, $, wait, ev, step, typeCmd, out, cue, fly, pop } = Reel;
+const { since, node, label, grow, branchOff } = G;
+
+const GREEN = '#22c55e', PURPLE = '#a78bfa', ORANGE = '#f59e0b';
+const BR = 'feature/memory-function';
+Reel.setup({
+  kicker: 'GitHub 實戰教學｜步驟 5',
+  title: '用分支開發記憶功能',
+  termFont: 21,
+  stages: [
+    { key: 'wd', icon: 'folder', zh: '工作目錄', en: 'Working Directory', cmd: '編輯檔案', h: 190 },
+    { key: 'lo', icon: 'repo', zh: '本機儲存庫', en: 'Local Repository', cmd: 'git commit', h: 260 },
+    { key: 're', icon: 'cloud', zh: '遠端 GitHub', en: 'Remote · origin', cmd: 'git push', h: 252 },
+  ],
+  steps: 5,
+  stepColors: ['#60a5fa', GREEN, '#3b82f6', '#3b82f6', GREEN, PURPLE],
+  stepStage: [null, 1, 0, 0, 1, 2],
+  intro: { cap: '幫計算機加上 M+、M-、MR、MC', sub: '在分支上開發，分成兩個 commit 提交' },
+  outro: { cap: '最新 main → 建分支 → 分階段 commit → push', sub: '下一集：測試之後，用 Pull Request 合併' },
+  caps: [
+    null,
+    { cap: '先更新 main，再建立功能分支', sub: '從最新的版本開始，之後比較不會衝突' },
+    { cap: '第一個 commit：記憶按鈕的介面', sub: 'index.html 和 style.css → <span style="font-family:var(--mono);color:#f59e0b">f3cdf64</span>' },
+    { cap: '第二個 commit：記憶功能的程式', sub: 'script.js → <span style="font-family:var(--mono);color:#f59e0b">d459664</span>' },
+    { cap: '查看分支比 main 多了哪些 commit', sub: 'git log main..feature/memory-function' },
+    { cap: 'git push：把分支送上 GitHub', sub: '兩個 commit 都上傳了，main 仍然不變' },
+  ],
+});
+
+// ---------- card content ----------
+$('card-wd').insertAdjacentHTML('beforeend', `
+  <div class="code">
+    <div class="row" id="r1"><span class="fname">index.html<em id="m1">M</em></span></div>
+    <div class="row"><span id="l1"></span></div>
+    <div class="row" id="r2"><span class="fname">style.css<em id="m2">M</em></span></div>
+    <div class="row"><span id="l2"></span></div>
+    <div class="row" id="r3"><span class="fname">script.js<em id="m3">M</em></span></div>
+    <div class="row"><span id="l3"></span></div>
+  </div>
+  <div class="minicalc" id="calc"></div>`);
+for (const k of ['lo', 're']) {
+  $('card-' + k).insertAdjacentHTML('beforeend', `<div class="graph"><svg id="svg-${k}" width="580" height="260"></svg>
+    <div class="tag" id="tm-${k}"></div><div class="tag" id="tf-${k}" style="font-size:17px"></div>${k === 'lo' ? '<div class="head" id="head">HEAD</div>' : ''}</div>`);
+}
+
+// ---------- timeline ----------
+step(0);
+cue('這一集要幫計算機加上記憶功能：M+、M-、MR、MC，並且在分支上分兩次提交。');
+wait(3.0);
+
+// STEP 1 — fresh main, new branch
+step(1); wait(0.3);
+cue('開始之前，先切到 main，用 git pull 確認是最新版本。');
+typeCmd('git checkout main');
+out([["Already on 'main'", ''], ["Your branch is up to date with 'origin/main'.", '']]);
+typeCmd('git pull origin main');
+out([['From https://github.com/Chihuah/calculator-app', ''], [' * branch            main       -> FETCH_HEAD', ''], ['Already up to date.', '']]);
+wait(1.6);
+cue('接著建立並切換到新分支 feature/memory-function。');
+typeCmd('git checkout -b feature/memory-function', 20);
+ev('branch');
+out([["Switched to a new branch 'feature/memory-function'", '']]);
+wait(2.6);
+
+// STEP 2 — first commit: UI
+step(2); wait(0.3);
+cue('先做介面：在 index.html 加上四個記憶按鈕，在 style.css 設定橘色樣式。');
+wait(0.2); ev('edit1'); wait(2.4);
+typeCmd('git status --short');
+out([[[' M', 'c-red'], [' index.html', '']], [[' M', 'c-red'], [' style.css', '']]]);
+wait(1.2);
+cue('把介面相關的兩個檔案 add 起來，做成第一個 commit：f3cdf64。');
+typeCmd('git add index.html style.css', 20);
+typeCmd('git commit -m "Add memory buttons UI"', 22);
+fly(0, 1, 'f3cdf64', 0.95); ev('c1', { at: Reel.now() + 0.95 });
+out([['[feature/memory-function f3cdf64] Add memory buttons UI', ''], [' 2 files changed, 36 insertions(+)', '']]);
+wait(0.95);
+wait(2.4);
+
+// STEP 3 — second commit: logic
+step(3); wait(0.3);
+cue('再做功能：在 script.js 寫出 M+、M-、MR、MC 四個函式。');
+wait(0.2); ev('edit2'); wait(2.0);
+cue('這是另一件事，所以另外做成第二個 commit：d459664。一個 commit 只做一件事，之後比較好檢查。');
+typeCmd('git add script.js');
+typeCmd('git commit -m "Implement M+, M-, MR, MC functions"', 24);
+fly(0, 1, 'd459664', 0.95); ev('c2', { at: Reel.now() + 0.95 });
+out([['[feature/memory-function d459664] Implement M+, M-, MR, MC functions', ''], [' 1 file changed, 45 insertions(+)', '']]);
+wait(0.95);
+wait(3.2);
+
+// STEP 4 — what the branch adds
+step(4); wait(0.3);
+cue('用 git log main..feature/memory-function，只列出分支比 main 多出來的 commit：剛好就是這兩個。');
+typeCmd('git log main..feature/memory-function --oneline', 26);
+ev('compare');
+out([
+  [['d459664 ', 'c-yellow'], ['(', 'c-yellow'], ['HEAD -> ', 'c-hd'], ['feature/memory-function', 'c-green'], [') ', 'c-yellow'], ['Implement M+, M-, MR, MC functions', '']],
+  [['f3cdf64 ', 'c-yellow'], ['Add memory buttons UI', '']],
+], 0.1);
+wait(4.4);
+
+// STEP 5 — push the branch
+step(5); wait(0.3);
+cue('最後用 git push 把分支送上 GitHub。main 完全沒有被改到。');
+typeCmd('git push origin feature/memory-function', 20);
+fly(1, 2, 'd459664', 1.0); ev('pushed', { at: Reel.now() + 1.0 });
+wait(0.4);
+out([['To https://github.com/Chihuah/calculator-app.git', ''], [' * [new branch]      feature/memory-function -> feature/memory-function', '']]);
+wait(0.6);
+wait(2.4);
+ev('allok'); wait(2.2);
+cue('先更新 main、建立分支、分階段提交，再 push。下一集要測試這個功能，然後用 Pull Request 合併。');
+ev('outro'); wait(4.0);
+
+// ---------- episode-specific rendering ----------
+const X = { m: 60, a: 170, b: 280 };    // e5e29b9, f3cdf64, d459664
+const LANES = { lo: { main: 180, feat: 88 }, re: { main: 172, feat: 80 } };
+
+// o: branch created, first and second commit times
+function drawRepo(k, o, t) {
+  const color = k === 'lo' ? GREEN : PURPLE, { main: my, feat: fy } = LANES[k];
+  const pA = since(o.a, t, 0.5), pB = since(o.b, t, 0.5);
+  let g = `<line x1="0" y1="${my}" x2="${X.m - 14}" y2="${my}" stroke="#3f3f46" stroke-width="4" stroke-dasharray="4 6"/>`;
+  g += grow(branchOff(X.m, my, X.a, fy), ORANGE, easeOut(pA));
+  g += grow(`M${X.a + 14},${fy} L${X.b - 14},${fy}`, ORANGE, easeOut(pB));
+  const ptr = since(o.branch, t, 0.4) * (1 - since(o.a, t, 0.4));
+  if (ptr > 0) g += `<path d="M${X.m},${my - 16} L${X.m},${fy} L${X.m + 20},${fy}" fill="none" stroke="${ORANGE}" stroke-width="2.5" stroke-dasharray="5 5" opacity="${ptr}"/>`;
+  // while comparing, ring the two commits that main does not have
+  const cmp = o.compare !== undefined && t >= o.compare && t < o.compare + 4.4 ? 0.5 + 0.5 * Math.sin((t - o.compare) * 5) : 0;
+  for (const x of [X.a, X.b]) if (cmp) g += `<circle cx="${x}" cy="${fy}" r="${23 + 5 * cmp}" fill="none" stroke="#facc15" stroke-opacity="${0.3 + 0.5 * cmp}" stroke-width="3"/>`;
+  g += node(X.m, my, color, true, undefined, t) + label(X.m, my + 40, 'e5e29b9', color, 1, true);
+  if (o.a !== undefined && t >= o.a) g += node(X.a, fy, ORANGE, pB <= 0, o.a, t) + label(X.a, fy + 40, 'f3cdf64', ORANGE, clamp(pA * 2), true);
+  if (o.b !== undefined && t >= o.b) g += node(X.b, fy, ORANGE, true, o.b, t) + label(X.b, fy + 40, 'd459664', ORANGE, clamp(pB * 2), true);
+  $('svg-' + k).innerHTML = g;
+  Reel.paintTag($('tm-' + k), 'main', color, X.m + 24, my - 17);
+  const fx = (o.b !== undefined && t >= o.b ? lerp(X.a, X.b, ease(pB)) : o.a !== undefined && t >= o.a ? lerp(X.m, X.a, ease(pA)) : X.m) + 24;
+  Reel.paintTag($('tf-' + k), BR, ORANGE, fx, fy - 17, since(o.branch, t, 0.4));
+  return { mx: X.m + 24, my, fx, fy };
+}
+
+function renderExtra(s, t) {
+  // working directory
+  const e1 = since(s.at.edit1, t, 1.2), e2 = since(s.at.edit2, t, 0.8);
+  const typed = (txt, p) => `<span style="color:#4ade80">${esc(txt.slice(0, Math.floor(p * txt.length)))}</span>`;
+  const dim = '<span style="color:#55555d">  …</span>';
+  $('l1').innerHTML = e1 > 0 ? typed('+ <button …>M+</button> M- MR MC', clamp(e1 / 0.5)) : dim;
+  $('l2').innerHTML = e1 > 0.5 ? typed('+ .memory-btn { background: #ff9800 }', clamp((e1 - 0.5) / 0.5)) : dim;
+  $('l3').innerHTML = e2 > 0 ? typed('+ function memoryAdd() { … }', e2) : dim;
+  $('m1').style.opacity = $('m2').style.opacity = (e1 > 0.1 ? 1 : 0) * (1 - since(s.at.c1, t, 0.4));
+  $('m3').style.opacity = (e2 > 0.1 ? 1 : 0) * (1 - since(s.at.c2, t, 0.4));
+  const memIn = since(s.at.edit1, t, 0.5);
+  G.calc($('calc'), { theme: 1, pct: true, mem: memIn > 0, memIn });
+
+  const lo = drawRepo('lo', { branch: s.at.branch, a: s.at.c1, b: s.at.c2, compare: s.at.compare }, t);
+  const onFeat = ease(since(s.at.branch, t, 0.5));
+  $('head').style.left = (lerp(lo.mx, lo.fx, onFeat) + 30) + 'px';
+  $('head').style.top = (lerp(lo.my, lo.fy, onFeat) - 50) + 'px';
+  drawRepo('re', { branch: s.at.pushed, a: s.at.pushed, b: s.at.pushed }, t);
+}
+
+Reel.finish(renderExtra);
+</script>
+</body>
+</html>

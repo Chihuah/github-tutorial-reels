@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>版本倒退</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@400;600&display=block" rel="stylesheet">
+<link rel="stylesheet" href="../../lib/reel.css">
+<style>
+.code{font-size:18px;line-height:22px;padding:8px 14px}
+.code .row{height:22px}
+.code .fname{color:#a1a1aa;font-size:17px}
+.code .fname em{font-style:normal;color:var(--orange);font-weight:600;margin-left:10px}
+.graph{height:270px}
+.note{position:absolute;font:600 17px/1 var(--sans);white-space:nowrap}
+</style>
+</head>
+<body>
+<script src="../../lib/reel.js"></script>
+<script src="../../lib/graph.js"></script>
+<script>
+const { clamp, ease, easeOut, backOut, lerp, mix, rgba, esc, $, wait, ev, step, typeCmd, out, cue, fly, pop } = Reel;
+const { since, node, label, grow, line } = G;
+
+const GREEN = '#22c55e', PURPLE = '#a78bfa', RED = '#ef4444';
+Reel.setup({
+  kicker: 'GitHub 實戰教學｜步驟 4',
+  title: '版本倒退：revert 與 reset',
+  termFont: 19,
+  stages: [
+    { key: 'wd', icon: 'folder', zh: '工作目錄', en: 'Working Directory', cmd: '編輯檔案' },
+    { key: 'lo', icon: 'repo', zh: '本機儲存庫', en: 'Local Repository', cmd: 'git commit', h: 270 },
+    { key: 're', icon: 'cloud', zh: '遠端 GitHub', en: 'Remote · origin', cmd: 'git push', h: 260 },
+  ],
+  steps: 5,
+  stepColors: ['#60a5fa', '#3b82f6', GREEN, GREEN, GREEN, RED],
+  stepStage: [null, 0, 1, 1, 1, [1, 2]],
+  intro: { cap: '不小心把壞掉的程式推上去了？', sub: '兩種救回來的方法：git revert 和 git reset' },
+  outro: { cap: 'revert 保留歷史，reset 改寫歷史', sub: '已經 push 給別人的 commit，優先用 revert' },
+  caps: [
+    null,
+    { cap: '模擬錯誤：把 calculate() 註解掉', sub: '按下 = 不會再計算，計算機壞了' },
+    { cap: '錯誤也被 commit 並 push 了', sub: 'GitHub 上的版本也跟著壞掉' },
+    { cap: 'git log：找出出錯的 commit', sub: '<span style="font-family:var(--mono);color:#f87171">361b398</span> 就是有錯誤的那一個' },
+    { cap: '方法一：git revert', sub: '新增一個「反向」的 commit 抵銷錯誤，歷史全部保留' },
+    { cap: '方法二：git reset --hard', sub: '直接回到 e5e29b9；push 要加 -f，會改寫 GitHub 的歷史' },
+  ],
+});
+
+// ---------- card content ----------
+$('card-wd').insertAdjacentHTML('beforeend', `
+  <div class="code">
+    <div class="row"><span class="fname">script.js<em id="mb">M</em></span></div>
+    <div class="row" id="r0"><span id="c0"></span></div>
+    <div class="row"><span id="c1"></span></div>
+    <div class="row"><span id="c2"></span></div>
+    <div class="row" id="r3"><span id="c3"></span></div>
+  </div>
+  <div class="minicalc" id="calc"></div>`);
+for (const k of ['lo', 're']) {
+  $('card-' + k).insertAdjacentHTML('beforeend', `<div class="graph"><svg id="svg-${k}" width="580" height="270"></svg>
+    <div class="tag" id="tag-${k}"></div><div class="note" id="gone-${k}">已丟棄</div></div>`);
+}
+
+// ---------- timeline ----------
+step(0);
+cue('寫程式難免出錯。這一集故意把計算機弄壞，再學兩種救回來的方法：revert 和 reset。');
+wait(3.2);
+
+// STEP 1 — break calculate()
+step(1); wait(0.3);
+cue('在 script.js 裡，把 calculate() 整個註解掉。現在按下等號，計算機就不會算了。');
+wait(0.3); ev('edit'); wait(2.6);
+typeCmd('git diff --stat');
+out([[[' script.js | 2 ', ''], ['++', 'c-green']], [' 1 file changed, 2 insertions(+)', '']]);
+wait(2.4);
+
+// STEP 2 — commit and push the bug
+step(2); wait(0.3);
+cue('沒發現錯誤，就直接 commit 並 push 了。GitHub 上的版本也跟著壞掉。');
+typeCmd('git add script.js');
+typeCmd('git commit -m "Update script (contains bug)"', 24);
+fly(0, 1, '361b398', 0.9); ev('bugLocal', { at: Reel.now() + 0.9 });
+out([['[main 361b398] Update script (contains bug)', ''], [' 1 file changed, 2 insertions(+)', '']]);
+wait(1.6);
+typeCmd('git push origin main');
+fly(1, 2, '361b398', 1.0); ev('bugRemote', { at: Reel.now() + 1.0 });
+wait(0.4);
+out([['To https://github.com/Chihuah/calculator-app.git', ''], ['   e5e29b9..361b398  main -> main', '']]);
+wait(0.6);
+wait(2.4);
+
+// STEP 3 — find the bad commit
+step(3); wait(0.3);
+cue('用 git log --oneline 查看最近的 commit，最上面的 361b398 就是出錯的那一個。');
+typeCmd('git log --oneline -3');
+ev('findBug');
+out([
+  [['361b398 ', 'c-yellow'], ['(', 'c-yellow'], ['HEAD -> ', 'c-hd'], ['main', 'c-green'], [', ', 'c-yellow'], ['origin/main', 'c-red'], [', ', 'c-yellow'], ['origin/HEAD', 'c-red'], [') ', 'c-yellow'], ['Update script (contains bug)', '']],
+  [['e5e29b9 ', 'c-yellow'], ['Merge pull request #1 from Chihuah/feature/percentage-button', '']],
+  [['17bde93 ', 'c-yellow'], ['Add percentage calculation button', '']],
+], 0.08);
+wait(4.0);
+
+// STEP 4 — revert
+step(4); wait(0.3);
+cue('方法一是 git revert。它會新增一個「反向」的 commit，把錯誤的修改抵銷掉。');
+typeCmd('git revert HEAD');
+ev('revert'); pop(1);
+out([['[main 9d043d7] Revert "Update script (contains bug)"', ''], [' 1 file changed, 2 deletions(-)', '']]);
+wait(2.6);
+cue('計算機恢復正常，而且錯誤和修正的紀錄都還在。push 之後，GitHub 也修好了。');
+typeCmd('git push origin main');
+fly(1, 2, '9d043d7', 1.0); ev('revertRemote', { at: Reel.now() + 1.0 });
+wait(0.4);
+out([['To https://github.com/Chihuah/calculator-app.git', ''], ['   361b398..9d043d7  main -> main', '']]);
+wait(0.6);
+wait(2.6);
+
+// STEP 5 — reset --hard and force push
+step(5); wait(0.3);
+cue('方法二是 git reset --hard：直接把 main 移回 e5e29b9，後面兩個 commit 都被丟掉。');
+typeCmd('git reset --hard e5e29b9');
+ev('reset');
+out([['HEAD is now at e5e29b9 Merge pull request #1 from Chihuah/feature/percentage-button', '']]);
+wait(3.0);
+cue('GitHub 上還留著舊的歷史，所以 push 必須加上 -f 強制覆蓋。如果別人已經下載過這些 commit，就會出問題。');
+typeCmd('git push -f origin main');
+fly(1, 2, 'e5e29b9', 1.0); ev('forced', { at: Reel.now() + 1.0 });
+wait(0.4);
+out([['To https://github.com/Chihuah/calculator-app.git', ''], [' + 9d043d7...e5e29b9 main -> main (forced update)', 'c-yellow']]);
+wait(0.6);
+wait(3.4);
+ev('allok'); wait(1.6);
+cue('記住：revert 保留歷史，reset 改寫歷史。已經 push 給別人的 commit，優先使用 revert。');
+ev('outro'); wait(4.2);
+
+// ---------- episode-specific rendering ----------
+const X = { m: 60, b: 210, r: 360 };   // e5e29b9, 361b398 (bug), 9d043d7 (revert)
+const Y = { lo: { main: 168, ghost: 66 }, re: { main: 150, ghost: 58 } };
+
+// o: times the bug and the revert commit appear, and when they get thrown away
+function drawRepo(k, o, t) {
+  const color = k === 'lo' ? GREEN : PURPLE, { main: my, ghost: gy } = Y[k];
+  const gone = ease(since(o.drop, t, 0.7));
+  const yB = lerp(my, gy, gone);
+  const hasB = o.bug !== undefined && t >= o.bug, hasR = o.rev !== undefined && t >= o.rev;
+  const ghost = { ghost: gone > 0.5, opacity: 1 - 0.45 * gone };
+  let g = `<line x1="0" y1="${my}" x2="${X.m - 14}" y2="${my}" stroke="#3f3f46" stroke-width="4" stroke-dasharray="4 6"/>`;
+  const edge = (xa, ya, xb, yb, c, p) => grow(`M${xa + 14},${ya} C${xa + 60},${ya} ${xb - 60},${yb} ${xb - 14},${yb}`, c, p,
+    gone > 0 ? { dash: '5 6', opacity: 1 - 0.5 * gone } : {});
+  if (hasB) g += edge(X.m, my, X.b, yB, RED, easeOut(since(o.bug, t, 0.5)));
+  if (hasR) g += edge(X.b, yB, X.r, yB, color, easeOut(since(o.rev, t, 0.5)));
+  // the bad commit pulses while we look for it
+  const find = o.find !== undefined && t >= o.find && t < o.find + 4 ? 0.5 + 0.5 * Math.sin((t - o.find) * 6) : 0;
+  if (find) g += `<circle cx="${X.b}" cy="${yB}" r="${24 + 6 * find}" fill="none" stroke="${RED}" stroke-opacity="${0.35 + 0.4 * find}" stroke-width="3"/>`;
+  const tip = !hasB || gone > 0.5 ? 'm' : hasR ? 'r' : 'b';
+  g += node(X.m, my, color, tip === 'm', undefined, t) + label(X.m, my + 40, 'e5e29b9', tip === 'm' ? color : '#8b8b94', 1, tip === 'm');
+  if (hasB) g += node(X.b, yB, RED, true, o.bug, t, ghost) + label(X.b, yB + 40, '361b398', RED, clamp(since(o.bug, t, 0.3) * (1 - 0.45 * gone)), true)
+    + `<text x="${X.b}" y="${yB - 26}" text-anchor="middle" font-family="Noto Sans TC, sans-serif" font-size="17" font-weight="700" fill="${RED}" opacity="${since(o.bug, t, 0.4) * (1 - 0.45 * gone)}">有錯誤</text>`;
+  if (hasR) g += node(X.r, yB, color, tip === 'r', o.rev, t, ghost) + label(X.r, yB + 40, '9d043d7', color, clamp(since(o.rev, t, 0.3) * (1 - 0.45 * gone)), true)
+    + `<text x="${X.r}" y="${yB - 26}" text-anchor="middle" font-family="Noto Sans TC, sans-serif" font-size="17" font-weight="700" fill="${color}" opacity="${since(o.rev, t, 0.4) * (1 - 0.45 * gone)}">Revert</text>`;
+  $('svg-' + k).innerHTML = g;
+
+  const tipX = tip === 'm' ? X.m : tip === 'r' ? X.r : X.b;
+  const prevX = o.drop !== undefined ? (hasR ? X.r : X.b) : tipX;
+  const tx = o.drop !== undefined ? lerp(prevX, X.m, ease(since(o.drop, t, 0.6))) : tipX;
+  const ty = o.drop !== undefined ? my : yB;
+  Reel.paintTag($('tag-' + k), k === 'lo' ? 'HEAD → main' : 'main', color, tx + 24, ty - 17);
+  const n = $('gone-' + k);
+  n.style.left = (X.r + 34) + 'px'; n.style.top = (gy - 9) + 'px'; n.style.color = '#a1a1aa'; n.style.opacity = since(o.drop === undefined ? undefined : o.drop + 0.5, t, 0.4);
+}
+
+function renderExtra(s, t) {
+  // script.js: /* and */ wrap calculate() while the bug is in; revert (and the later reset) bring it back
+  const broken = since(s.at.edit, t, 0.6) * (1 - since(s.at.revert, t, 0.6));
+  const cmt = '#6a9955';
+  $('c0').innerHTML = `<span style="color:${RED}">/*</span>`;
+  $('r0').style.opacity = broken;
+  $('c1').innerHTML = `<span style="color:${mix('#93c5fd', cmt, broken)}">function calculate() {</span>`;
+  $('c2').innerHTML = `<span style="color:${mix('#d4d4d8', cmt, broken)}">    currentInput = eval(…)</span>`;
+  $('c3').innerHTML = `<span style="color:${mix('#d4d4d8', cmt, broken)}">}</span><span style="color:${RED};opacity:${broken}">  */</span>`;
+  $('mb').style.opacity = since(s.at.edit, t, 0.3) * (1 - since(s.at.bugLocal, t, 0.4));
+  G.calc($('calc'), { theme: 1, pct: true, eqBroken: broken });
+
+  drawRepo('lo', { bug: s.at.bugLocal, rev: s.at.revert, drop: s.at.reset, find: s.at.findBug }, t);
+  drawRepo('re', { bug: s.at.bugRemote, rev: s.at.revertRemote, drop: s.at.forced }, t);
+}
+
+Reel.finish(renderExtra);
+</script>
+</body>
+</html>

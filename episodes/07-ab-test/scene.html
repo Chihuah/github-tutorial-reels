@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>A/B 測試：兩種設計</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@400;600&display=block" rel="stylesheet">
+<link rel="stylesheet" href="../../lib/reel.css">
+<style>
+.code{top:16px;height:158px;padding:10px 14px}
+.code .row{height:30px}
+.code .br{font:600 17px/1 var(--mono);border-radius:7px;padding:5px 9px;display:inline-block}
+.code .ch{font:400 17px/30px var(--mono);white-space:pre}
+.minicalc{top:16px;height:158px}
+.graph{height:262px}
+.tag{font-size:17px}
+.head{position:absolute;font:700 15px/1 var(--mono);color:#0b0b0e;background:#38bdf8;border-radius:6px;padding:5px 8px;white-space:nowrap}
+</style>
+</head>
+<body>
+<script src="../../lib/reel.js"></script>
+<script src="../../lib/graph.js"></script>
+<script>
+const { clamp, ease, easeOut, backOut, lerp, mix, rgba, esc, $, wait, ev, step, typeCmd, out, cue, fly, pop } = Reel;
+const { since, node, label, grow, branchOff } = G;
+
+const GREEN = '#22c55e', PURPLE = '#a78bfa', V1 = '#f59e0b', V2 = '#2dd4bf';
+const B1 = 'feature/scientific-v1', B2 = 'feature/scientific-v2';
+Reel.setup({
+  kicker: 'GitHub 實戰教學｜步驟 7',
+  title: 'A/B 測試：兩種設計',
+  termFont: 20,
+  stages: [
+    { key: 'wd', icon: 'folder', zh: '工作目錄', en: 'Working Directory', cmd: '目前分支的檔案', h: 190 },
+    { key: 'lo', icon: 'repo', zh: '本機儲存庫', en: 'Local Repository', cmd: 'git commit', h: 262 },
+    { key: 're', icon: 'cloud', zh: '遠端 GitHub', en: 'Remote · origin', cmd: 'git push', h: 250 },
+  ],
+  steps: 5,
+  stepColors: ['#60a5fa', V1, V1, GREEN, V2, '#3b82f6'],
+  stepStage: [null, 1, 0, 1, 0, 0],
+  intro: { cap: '科學計算要用按鈕，還是下拉選單？', sub: '兩種設計各開一個分支，做出來再比較' },
+  outro: { cap: '兩個版本各在自己的分支上', sub: '互不影響，可以分別測試；下一集選出最好的版本' },
+  caps: [
+    null,
+    { cap: '版本 1：建立 feature/scientific-v1', sub: '從最新的 main 分出去' },
+    { cap: '版本 1：按鈕式，commit 並 push', sub: 'sin、cos、tan、log、√、x² 六個綠色按鈕' },
+    { cap: '回到 main，建立版本 2 的分支', sub: '工作目錄也回到 main 的樣子：版本 1 的按鈕不見了' },
+    { cap: '版本 2：下拉選單式，commit 並 push', sub: '<span style="font-family:var(--mono);color:#2dd4bf">89553d4</span>：一個下拉選單放進所有功能' },
+    { cap: '比較兩個版本', sub: 'git diff 看差異；切換分支，分別打開測試' },
+  ],
+});
+
+// ---------- card content ----------
+$('card-wd').insertAdjacentHTML('beforeend', `
+  <div class="code"><div class="row"><span class="br" id="br"></span></div>
+    <div class="row"><span class="ch" id="ch1"></span></div><div class="row"><span class="ch" id="ch2"></span></div><div class="row"><span class="ch" id="ch3"></span></div></div>
+  <div class="minicalc" id="calc"></div>`);
+for (const k of ['lo', 're']) {
+  $('card-' + k).insertAdjacentHTML('beforeend', `<div class="graph"><svg id="svg-${k}" width="580" height="262"></svg>
+    <div class="tag" id="tm-${k}"></div><div class="tag" id="t1-${k}"></div><div class="tag" id="t2-${k}"></div>${k === 'lo' ? '<div class="head" id="head">← HEAD</div>' : ''}</div>`);
+}
+
+// ---------- timeline ----------
+step(0);
+cue('科學計算功能要做成按鈕，還是下拉選單？這一集兩種都做，各自放在一個分支上。');
+wait(3.0);
+
+// STEP 1 — branch for version 1
+step(1); wait(0.3);
+cue('從最新的 main 建立第一個分支：feature/scientific-v1。');
+typeCmd('git checkout -b feature/scientific-v1', 22);
+ev('b1');
+out([["Switched to a new branch 'feature/scientific-v1'", '']]);
+wait(2.4);
+
+// STEP 2 — version 1: buttons
+step(2); wait(0.3);
+cue('版本 1 用按鈕：加上 sin、cos、tan、log、根號和平方六個綠色按鈕。');
+wait(0.2); ev('edit1'); wait(2.2);
+typeCmd('git add .');
+typeCmd('git commit -m "Add scientific calculator - button style (v1)"', 28);
+fly(0, 1, '2e272ca', 0.95); ev('c1', { at: Reel.now() + 0.95 });
+out([['[feature/scientific-v1 2e272ca] Add scientific calculator - button style (v1)', ''], [' 3 files changed, 69 insertions(+)', '']]);
+wait(1.2);
+cue('commit 之後，把這個分支 push 上 GitHub。');
+typeCmd('git push origin feature/scientific-v1', 24);
+fly(1, 2, '2e272ca', 1.0); ev('p1', { at: Reel.now() + 1.0 });
+wait(0.4);
+out([['To https://github.com/Chihuah/calculator-app.git', ''], [' * [new branch]      feature/scientific-v1 -> feature/scientific-v1', '']]);
+wait(0.6); wait(1.8);
+
+// STEP 3 — back to main, branch for version 2
+step(3); wait(0.3);
+cue('切回 main。工作目錄也跟著變回 main 的樣子，版本 1 的按鈕不見了。');
+typeCmd('git checkout main');
+ev('toMain');
+out([["Switched to branch 'main'", ''], ["Your branch is up to date with 'origin/main'.", '']]);
+wait(2.4);
+cue('從 main 建立第二個分支：feature/scientific-v2。');
+typeCmd('git checkout -b feature/scientific-v2', 22);
+ev('b2');
+out([["Switched to a new branch 'feature/scientific-v2'", '']]);
+wait(2.0);
+
+// STEP 4 — version 2: dropdown
+step(4); wait(0.3);
+cue('版本 2 改用一個下拉選單，把六種科學計算都放進去。');
+wait(0.2); ev('edit2'); wait(2.2);
+typeCmd('git add .');
+typeCmd('git commit -m "Add scientific calculator - dropdown style (v2)"', 28);
+fly(0, 1, '89553d4', 0.95); ev('c2', { at: Reel.now() + 0.95 });
+out([['[feature/scientific-v2 89553d4] Add scientific calculator - dropdown style (v2)', ''], [' 3 files changed, 86 insertions(+)', '']]);
+wait(1.2);
+typeCmd('git push origin feature/scientific-v2', 24);
+fly(1, 2, '89553d4', 1.0); ev('p2', { at: Reel.now() + 1.0 });
+wait(0.4);
+out([['To https://github.com/Chihuah/calculator-app.git', ''], [' * [new branch]      feature/scientific-v2 -> feature/scientific-v2', '']]);
+wait(0.6); wait(1.8);
+
+// STEP 5 — compare
+step(5); wait(0.3);
+cue('用 git diff 比較兩個分支：三個檔案都有不同的寫法。');
+typeCmd('git diff feature/scientific-v1 feature/scientific-v2 --stat', 30);
+out([
+  [[' index.html | 19 ', ''], ['+++++++++++', 'c-green'], ['--------', 'c-red']],
+  [[' script.js  | 16 ', ''], ['++++++++++++', 'c-green'], ['----', 'c-red']],
+  [[' style.css  | 26 ', ''], ['++++++++++++++++', 'c-green'], ['----------', 'c-red']],
+  [' 3 files changed, 39 insertions(+), 22 deletions(-)', ''],
+], 0.08);
+wait(2.6);
+cue('要實際試用，就切換分支：切到 v1 是按鈕，切到 v2 是下拉選單。');
+typeCmd('git checkout feature/scientific-v1', 22);
+ev('see1');
+out([["Switched to branch 'feature/scientific-v1'", '']]);
+wait(1.8);
+typeCmd('git checkout feature/scientific-v2', 22);
+ev('see2');
+out([["Switched to branch 'feature/scientific-v2'", '']]);
+wait(1.6);
+ev('allok'); wait(2.2);
+cue('兩個版本各在自己的分支上，互不影響。下一集比較使用者的回饋，選出最好的版本合併。');
+ev('outro'); wait(4.0);
+
+// ---------- episode-specific rendering ----------
+const X = { m: 110, c: 240 };    // 0e86477, version commits
+const LANES = { lo: { v1: 56, main: 138, v2: 220 }, re: { v1: 50, main: 125, v2: 200 } };
+const LABEL = { 1: '2e272ca', 2: '89553d4' };
+
+// o: {b1, c1, b2, c2} times; which lanes exist on this card
+function drawRepo(k, o, t) {
+  const color = k === 'lo' ? GREEN : PURPLE, L = LANES[k];
+  let g = '';
+  const lane = (n, col) => {
+    const y = L['v' + n], b = o['b' + n], c = o['c' + n];
+    const p = since(c, t, 0.5);
+    g += grow(branchOff(X.m, L.main, X.c, y), col, easeOut(p));
+    const ptr = since(b, t, 0.4) * (1 - since(c, t, 0.4));
+    if (ptr > 0) g += `<path d="M${X.m},${L.main + 16 * Math.sign(y - L.main)} L${X.m},${y} L${X.m + 20},${y}" fill="none" stroke="${col}" stroke-width="2.5" stroke-dasharray="5 5" opacity="${ptr}"/>`;
+    if (c !== undefined && t >= c) g += node(X.c, y, col, true, c, t) + label(X.c, y - 24, LABEL[n], col, clamp(p * 2), true);
+    return { x: (c !== undefined && t >= c ? lerp(X.m, X.c, ease(p)) : X.m) + 24, y: y - 17, op: since(b, t, 0.4) };
+  };
+  const t1 = lane(1, V1), t2 = lane(2, V2);
+  g += node(X.m, L.main, color, true, undefined, t);
+  g += `<text x="${X.m - 24}" y="${L.main + 6}" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="18" fill="${color}" font-weight="600">0e86477</text>`;
+  $('svg-' + k).innerHTML = g;
+  Reel.paintTag($('tm-' + k), 'main', color, X.m + 24, L.main - 17);
+  Reel.paintTag($('t1-' + k), B1, V1, t1.x, t1.y, t1.op);
+  Reel.paintTag($('t2-' + k), B2, V2, t2.x, t2.y, t2.op);
+}
+
+// which branch is checked out at time t
+function current(s) {
+  const marks = [['main', 0], ['v1', s.at.b1], ['main', s.at.toMain], ['v2', s.at.b2], ['v1', s.at.see1], ['v2', s.at.see2]]
+    .filter(m => m[1] !== undefined).sort((a, b) => a[1] - b[1]);
+  return marks.at(-1);
+}
+
+const CHANGES = {
+  main: ['（和 main 相同）', '', ''],
+  v1: ['index.html  + 6 個科學按鈕', 'style.css   + .scientific-buttons', 'script.js   + scientificCalc()'],
+  v2: ['index.html  + <select> 下拉選單', 'style.css   + .scientific-dropdown', 'script.js   + applyScientificOp()'],
+};
+function renderExtra(s, t) {
+  const [cur, curAt] = current(s);
+  // a branch only shows its changes once they have been written
+  const written = cur === 'v1' ? s.at.edit1 : cur === 'v2' ? s.at.edit2 : 0;
+  const has = written !== undefined && t >= written;
+  const show = cur === 'main' || !has ? 'main' : cur;
+  const name = cur === 'main' ? 'main' : cur === 'v1' ? B1 : B2, col = cur === 'main' ? GREEN : cur === 'v1' ? V1 : V2;
+  $('br').textContent = name; $('br').style.color = col; $('br').style.background = rgba(col, 0.12); $('br').style.border = `1.5px solid ${rgba(col, 0.6)}`;
+  const lines = cur !== 'main' && !has ? ['（還沒有修改）', '', ''] : CHANGES[show];
+  [1, 2, 3].forEach(i => { $('ch' + i).textContent = lines[i - 1]; $('ch' + i).style.color = show === 'main' || !has ? '#55555d' : '#4ade80'; });
+  const sciIn = since(Math.max(curAt, written ?? 0), t, 0.45);
+  G.calc($('calc'), { theme: 1, pct: true, mem: true, sci: show === 'v1' ? 'buttons' : show === 'v2' ? 'dropdown' : null, sciIn });
+
+  drawRepo('lo', { b1: s.at.b1, c1: s.at.c1, b2: s.at.b2, c2: s.at.c2 }, t);
+  drawRepo('re', { b1: s.at.p1, c1: s.at.p1, b2: s.at.p2, c2: s.at.p2 }, t);
+  // HEAD sits just right of the checked-out branch's tag
+  const tag = $(cur === 'main' ? 'tm-lo' : cur === 'v1' ? 't1-lo' : 't2-lo');
+  $('head').style.left = (parseFloat(tag.style.left) + tag.offsetWidth + 8) + 'px';
+  $('head').style.top = (parseFloat(tag.style.top) + 2) + 'px';
+}
+
+Reel.finish(renderExtra);
+</script>
+</body>
+</html>

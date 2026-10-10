@@ -11,26 +11,52 @@
 
 | 集數 | 講義段落 | 影片 | 字幕 |
 |---|---|---|---|
+| 01 | 步驟 1：建立專案基礎並完成首次部署 | [01-first-deploy.mp4](videos/01-first-deploy.mp4) | [01-first-deploy.srt](videos/01-first-deploy.srt) |
 | 02 | 步驟 2：透過樣式調整熟悉基本 Git 操作流程 | [02-git-basic-flow.mp4](videos/02-git-basic-flow.mp4) | [02-git-basic-flow.srt](videos/02-git-basic-flow.srt) |
 | 03 | 步驟 3：使用 Pull Request 實現程式碼審查機制 | [03-pull-request.mp4](videos/03-pull-request.mp4) | [03-pull-request.srt](videos/03-pull-request.srt) |
+| 04 | 步驟 4：學會版本倒退以應對錯誤情況 | [04-undo-changes.mp4](videos/04-undo-changes.mp4) | [04-undo-changes.srt](videos/04-undo-changes.srt) |
+| 05 | 步驟 5：使用分支策略開發新功能（記憶功能） | [05-feature-branch.mp4](videos/05-feature-branch.mp4) | [05-feature-branch.srt](videos/05-feature-branch.srt) |
+| 06 | 步驟 6：完整測試後透過 Pull Request 合併新功能 | [06-test-and-merge.mp4](videos/06-test-and-merge.mp4) | [06-test-and-merge.srt](videos/06-test-and-merge.srt) |
+| 07 | 步驟 7：實作 A/B 測試比較兩種設計方案 | [07-ab-test.mp4](videos/07-ab-test.mp4) | [07-ab-test.srt](videos/07-ab-test.srt) |
+| 08 | 步驟 8：評估測試結果並合併最佳方案 | [08-pick-and-release.mp4](videos/08-pick-and-release.mp4) | [08-pick-and-release.srt](videos/08-pick-and-release.srt) |
 
 ## 畫面上的輸出都是真的
 
 影片裡終端機顯示的每一行輸出、每一個 commit 編號（hash），都是在 calculator-app 上實際執行指令得到的結果。例如步驟 2 的 commit `7434ffb`，就是 calculator-app 歷史紀錄裡的同一個 commit。
 
-在 GitHub 網頁上完成的操作（例如合併 Pull Request），終端機無法重現。這類畫面使用 GitHub 上的真實資料：步驟 3 的 PR #1 標題、修改的檔案數和行數，以及合併後產生的 commit `e5e29b9`，都和 calculator-app 的實際紀錄相同。
+在 GitHub 網頁上完成的操作（例如合併 Pull Request），終端機無法重現。這類畫面使用 GitHub 上的真實資料：PR #1、PR #3 的標題、commit 數、修改的檔案數和行數，以及合併後產生的 commit `e5e29b9`、`0e86477`，都和 calculator-app 的實際紀錄相同。
 
-為了讓手機上看得清楚，畫面有做兩種精簡：
+各集和 calculator-app 歷史的對照：
+
+| 集數 | commit 的來源 |
+|---|---|
+| 01 | `779adb0`、`3108cfa`：與 calculator-app 相同 |
+| 02 | `7434ffb`：與 calculator-app 相同 |
+| 03 | `17bde93`、`e5e29b9`（PR #1）：與 calculator-app 相同 |
+| 04 | calculator-app 的歷史裡**沒有**這一步的 commit。影片中的 `361b398`（有錯誤）和 `9d043d7`（revert）是依照講義實際做出來的；最後 `reset` 回到 `e5e29b9`，剛好接上 calculator-app 的真實歷史 |
+| 05 | `f3cdf64`、`d459664`：與 calculator-app 相同 |
+| 06 | `0e86477`（PR #3）：與 calculator-app 相同；5 個測試用 `tools/calc-test.mjs` 對真正的 `script.js` 執行過 |
+| 07 | 版本 2 `89553d4`：與 calculator-app 相同。版本 1 `2e272ca` 不在 calculator-app 裡，是依照講義 7.2 的程式碼實際做出來的（見 `episodes/07-ab-test/make-v1.sh`） |
+| 08 | `89553d4` 與 `v2.0` 標籤：與 calculator-app 完全相同 |
+
+「實際做出來」的 commit 都固定了作者和時間，所以每次執行 `replay.sh`，hash 都一樣。
+
+為了讓手機上看得清楚，畫面有做幾種精簡：
 
 - `git status` 省略括號裡的提示行。
 - `git diff` 只保留主要的修改行，省略檔頭和沒有修改的行。
 - 遠端網址顯示為 `https://github.com/Chihuah/calculator-app.git`（`replay.sh` 用本機資料夾代替 GitHub，所以這一行的網址會不同）。
+- `git clone` 只顯示第一行 `Cloning into 'calculator-app'...`（從 GitHub 下載時，後面還會有幾行下載進度）。
+- 第 4 集的 `git revert` 省略一行 `Date: ...`（只因為 `replay.sh` 固定了時間才會出現）。
+- 在 GitHub 網頁上的操作，終端機會以 `#` 開頭的註解表示，例如 `# 在 GitHub 建立 Pull Request #3`。
 
 每一集都有一個 `replay.sh`，可以重新執行一次影片中的指令，讓你自己對照：
 
 ```bash
 ./episodes/02-git-basic-flow/replay.sh <calculator-app 的本機路徑>
 ```
+
+結尾會用 ✓ 標示哪些 hash 和 calculator-app 相同。
 
 這個腳本只在暫存資料夾裡操作，不會修改你的 calculator-app。
 
@@ -41,7 +67,10 @@ lib/reel.js                  所有集數共用的動畫程式（時間軸、終
 lib/reel.css                 所有集數共用的版面樣式
 episodes/<集數>/scene.html   每一集的動畫畫面：卡片內容和時間軸
 episodes/<集數>/replay.sh    重新執行該集指令，驗證輸出
+lib/graph.js                 共用的 commit 圖形和小計算機畫法
 tools/record.mjs             用瀏覽器逐格錄製畫面
+tools/replay-lib.sh          replay.sh 共用的工具
+tools/calc-test.mjs          用真正的 script.js 跑講義 6.1 的記憶功能測試
 tools/sfx.py                 合成音效、輸出字幕檔
 build.sh                     一次完成錄製、音效、合併
 videos/                      完成的影片和字幕
@@ -76,3 +105,13 @@ videos/                      完成的影片和字幕
 - **音效音量**：在 `tools/sfx.py` 的 `LEVEL`，每一種音效可以分別調整。
 - **節奏快慢**：在 `scene.html` 的時間軸（timeline）區塊，調整 `wait(秒數)`。
 - **預覽單張畫面**：`node tools/record.mjs episodes/02-git-basic-flow/scene.html preview build/preview 5 20 40`，會輸出第 5、20、40 秒的截圖。
+
+## 製作時發現的講義問題
+
+實際執行講義的指令時，發現下面幾個地方和講義寫的不一樣。影片都照實際的結果呈現。
+
+1. **6.1 記憶功能測試**：照講義的按鍵順序，有 3 個測試會失敗。按完 M+ 之後畫面上的數字不會清掉，接著輸入的數字會接在後面（例如測試 1 會得到 58，不是 8）。在每次輸入新數字前先按 C，5 個測試的結果才會和講義相同。可以用 `node tools/calc-test.mjs <script.js>` 自己確認。
+2. **8.4 刪除分支**：`git branch -d feature/scientific-v1` 會失敗，因為版本 1 沒有合併進 main。要用 `git branch -D` 才能刪除。第 8 集把這個錯誤訊息當成教學重點。
+3. **2.1 等號按鈕 hover 顏色**：講義寫 `#1976d2`，calculator-app 的 commit `7434ffb` 實際是 `#73eb97`。
+4. **3.2 百分比按鈕**：加上 % 按鈕後，計算機第一排會有 5 顆按鈕，「←」會被擠到下一排。這是講義程式碼真實的結果（第 3 集的小計算機也是這樣）。
+5. **1.1 私人 repository 與 GitHub Pages**：GitHub 免費方案的私人 repository 不能使用 GitHub Pages；學生若用免費帳號，需要把 repository 設成公開，或使用 GitHub Student Developer Pack。

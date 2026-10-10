@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>選出最佳方案並發布</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@400;600&display=block" rel="stylesheet">
+<link rel="stylesheet" href="../../lib/reel.css">
+<style>
+.eval{position:absolute;left:440px;top:16px;width:558px;height:158px;background:var(--panel2);border:1px solid #24242a;border-radius:12px;padding:8px 0;overflow:hidden}
+.eval table{width:100%;border-collapse:collapse;font:500 18px/1 var(--sans);color:#d4d4d8}
+.eval th{font-weight:700;color:#8b8b94;font-size:16px;text-align:left;padding:5px 14px}
+.eval td{padding:6px 14px;white-space:nowrap}
+.eval td.s{font-size:17px;letter-spacing:1px;color:#facc15}
+.eval .col{position:absolute;top:4px;bottom:4px;border-radius:9px;pointer-events:none}
+.graph{height:262px}
+.tag{font-size:17px}
+.head{position:absolute;font:700 15px/1 var(--mono);color:#0b0b0e;background:#38bdf8;border-radius:6px;padding:5px 8px;white-space:nowrap}
+.vtag{position:absolute;font:700 17px/1 var(--mono);color:#0b0b0e;background:#facc15;border-radius:4px 10px 10px 4px;padding:6px 10px 6px 8px;white-space:nowrap}
+</style>
+</head>
+<body>
+<script src="../../lib/reel.js"></script>
+<script src="../../lib/graph.js"></script>
+<script>
+const { clamp, ease, easeOut, backOut, lerp, mix, rgba, esc, $, wait, ev, step, typeCmd, out, cue, fly, pop } = Reel;
+const { since, node, label, grow, branchOff } = G;
+
+const GREEN = '#22c55e', PURPLE = '#a78bfa', V1 = '#f59e0b', V2 = '#2dd4bf', RED = '#ef4444';
+const B1 = 'feature/scientific-v1', B2 = 'feature/scientific-v2';
+Reel.setup({
+  kicker: 'GitHub 實戰教學｜步驟 8',
+  title: '選出最佳方案並發布',
+  termFont: 19,
+  stages: [
+    { key: 'wd', icon: 'chart', zh: '評估結果', en: 'A/B Test Result', cmd: '回饋表', h: 190, color: '#facc15' },
+    { key: 'lo', icon: 'repo', zh: '本機儲存庫', en: 'Local Repository', cmd: 'git merge', h: 262 },
+    { key: 're', icon: 'cloud', zh: '遠端 GitHub', en: 'Remote · origin', cmd: 'git push', h: 250 },
+  ],
+  steps: 6,
+  stepColors: ['#60a5fa', '#facc15', GREEN, PURPLE, RED, PURPLE, '#facc15'],
+  stepStage: [null, 0, 1, 2, 1, 2, [1, 2]],
+  intro: { cap: '按鈕式和下拉選單，哪個比較好？', sub: '看回饋選出版本 2，合併、清理，再標記成 v2.0' },
+  outro: { cap: '評估 → 合併 → 清理 → 標記版本', sub: 'calculator-app v2.0 發布完成' },
+  caps: [
+    null,
+    { cap: '比較回饋：選擇版本 2', sub: '操作更直覺、介面更簡潔，多數人偏好下拉選單' },
+    { cap: 'git merge：把版本 2 合併進 main', sub: 'main 沒有新的 commit，直接「快轉」到 89553d4' },
+    { cap: 'git push：GitHub 的 main 也更新了', sub: 'main 從 0e86477 前進到 89553d4' },
+    { cap: '刪除本機分支：-d 被拒絕了？', sub: '版本 1 沒有合併，-d 會保護它；確定不要了才用 -D' },
+    { cap: '刪除 GitHub 上的兩個分支', sub: '版本 1 的 commit 不再屬於任何分支' },
+    { cap: '打上版本標籤 v2.0', sub: '用 git tag 替重要的版本取一個好記的名字' },
+  ],
+});
+
+// ---------- card content ----------
+const ROWS = [['操作直覺性', '★★★★☆', '★★★★★'], ['介面美觀度', '★★★☆☆', '★★★★★'], ['功能易用性', '★★★★☆', '★★★★☆'], ['使用者偏好', '★★★☆☆', '★★★★★']];
+$('card-wd').insertAdjacentHTML('beforeend', `
+  <div class="eval"><div class="col" id="pick"></div><table>
+    <tr><th>評估標準</th><th>版本 1 按鈕式</th><th>版本 2 下拉選單</th></tr>
+    ${ROWS.map((r, i) => `<tr id="row${i}"><td>${r[0]}</td><td class="s">${r[1]}</td><td class="s">${r[2]}</td></tr>`).join('')}
+  </table></div>`);
+for (const k of ['lo', 're']) {
+  $('card-' + k).insertAdjacentHTML('beforeend', `<div class="graph"><svg id="svg-${k}" width="580" height="262"></svg>
+    <div class="tag" id="t1-${k}"></div><div class="tag" id="t2-${k}"></div><div class="tag" id="tm-${k}"></div>
+    <div class="vtag" id="vt-${k}">v2.0</div>${k === 'lo' ? '<div class="head" id="head">← HEAD</div>' : ''}</div>`);
+}
+
+// ---------- timeline ----------
+step(0);
+cue('上一集做了兩種設計。這一集看使用者的回饋，選出最好的版本，合併、清理，再標記成 v2.0。');
+wait(3.2);
+
+// STEP 1 — pick version 2
+step(1); wait(0.3);
+cue('把回饋整理成表格：版本 2 在直覺性、美觀和使用者偏好都比較好。');
+ev('table'); wait(3.4);
+cue('決定採用版本 2，也就是下拉選單。');
+ev('pick'); wait(2.4);
+
+// STEP 2 — merge version 2 into main
+step(2); wait(0.3);
+cue('切回 main，用 git pull 確認是最新版本。');
+typeCmd('git checkout main');
+ev('toMain');
+out([["Switched to branch 'main'", ''], ["Your branch is up to date with 'origin/main'.", '']]);
+typeCmd('git pull origin main');
+out([['From https://github.com/Chihuah/calculator-app', ''], [' * branch            main       -> FETCH_HEAD', ''], ['Already up to date.', '']]);
+wait(1.4);
+cue('用 git merge 合併版本 2。main 沒有新的 commit，所以 Git 直接把 main 往前「快轉」到 89553d4，不需要合併 commit。');
+typeCmd('git merge feature/scientific-v2', 22);
+ev('merge');
+out([
+  ['Updating 0e86477..89553d4', ''], ['Fast-forward', 'c-cyan'],
+  [[' index.html | 12 ', ''], ['++++++++++++', 'c-green']],
+  [[' script.js  | 49 ', ''], ['+++++++++++++++++++++++++++++++++++++++++++++++++', 'c-green']],
+  [[' style.css  | 25 ', ''], ['+++++++++++++++++++++++++', 'c-green']],
+  [' 3 files changed, 86 insertions(+)', ''],
+], 0.08);
+wait(4.4);
+
+// STEP 3 — push main
+step(3); wait(0.3);
+cue('push 之後，GitHub 上的 main 也前進到 89553d4，網站就換成新版本了。');
+typeCmd('git push origin main');
+fly(1, 2, '89553d4', 1.0); ev('pushMain', { at: Reel.now() + 1.0 });
+wait(0.4);
+out([['To https://github.com/Chihuah/calculator-app.git', ''], ['   0e86477..89553d4  main -> main', '']]);
+wait(0.6); wait(2.4);
+
+// STEP 4 — delete local branches
+step(4); wait(0.3);
+cue('接著刪除用完的分支。咦？刪除版本 1 的時候，Git 拒絕了。');
+typeCmd('git branch -d feature/scientific-v1', 22);
+out([["error: the branch 'feature/scientific-v1' is not fully merged.", 'c-red'],
+     ["If you are sure you want to delete it, run 'git branch -D feature/scientific-v1'", 'c-dim']]);
+wait(3.2);
+cue('因為版本 1 從來沒有合併，用 -d 刪除會遺失它的 commit，所以 Git 擋下來保護你。確定不要了，才用大寫的 -D。');
+typeCmd('git branch -D feature/scientific-v1', 22);
+ev('delV1');
+out([['Deleted branch feature/scientific-v1 (was 2e272ca).', '']]);
+wait(1.6);
+typeCmd('git branch -d feature/scientific-v2', 22);
+ev('delV2');
+out([['Deleted branch feature/scientific-v2 (was 89553d4).', '']]);
+wait(2.0);
+
+// STEP 5 — delete branches on GitHub
+step(5); wait(0.3);
+cue('GitHub 上的兩個分支也一起刪掉。');
+typeCmd('git push origin --delete feature/scientific-v1 feature/scientific-v2', 30);
+ev('delRemote', { at: Reel.now() + 0.5 });
+out([['To https://github.com/Chihuah/calculator-app.git', ''], [' - [deleted]         feature/scientific-v1', 'c-red'], [' - [deleted]         feature/scientific-v2', 'c-red']]);
+wait(3.0);
+
+// STEP 6 — tag the release
+step(6); wait(0.3);
+cue('最後用 git tag 替這個版本取名為 v2.0，再把標籤 push 上 GitHub。');
+typeCmd('git tag -a v2.0 -m "Version 2.0: Add scientific calculator with dropdown interface"', 34);
+ev('tag'); pop(1);
+wait(1.0);
+typeCmd('git push origin v2.0');
+fly(1, 2, 'v2.0', 1.0); ev('pushTag', { at: Reel.now() + 1.0 });
+wait(0.4);
+out([['To https://github.com/Chihuah/calculator-app.git', ''], [' * [new tag]         v2.0 -> v2.0', '']]);
+wait(0.6); wait(1.6);
+ev('allok'); wait(2.2);
+cue('評估、合併、清理分支、標記版本。calculator-app 的 v2.0 正式發布了。');
+ev('outro'); wait(4.0);
+
+// ---------- episode-specific rendering ----------
+const X = { m: 110, c: 240 };
+const LANES = { lo: { v1: 56, main: 138, v2: 220 }, re: { v1: 50, main: 125, v2: 200 } };
+
+// o: merge (fast-forward), v1/v2 deletion times, tag time
+function drawRepo(k, o, t) {
+  const color = k === 'lo' ? GREEN : PURPLE, L = LANES[k];
+  const ff = ease(since(o.merge, t, 0.8));
+  const gone1 = since(o.del1, t, 0.6);
+  let g = '';
+  // version 1 lane: becomes a faded, dashed ghost once no branch points to it
+  g += grow(branchOff(X.m, L.main, X.c, L.v1), V1, 1, gone1 > 0 ? { dash: '5 6', opacity: 1 - 0.55 * gone1 } : {});
+  g += node(X.c, L.v1, V1, true, undefined, t, { ghost: gone1 > 0.5, opacity: 1 - 0.55 * gone1 }) + label(X.c, L.v1 - 24, '2e272ca', V1, 1 - 0.55 * gone1, true);
+  if (gone1 > 0) g += `<text x="${X.c + 24}" y="${L.v1 + 6}" font-family="Noto Sans TC, sans-serif" font-size="17" font-weight="700" fill="#a1a1aa" opacity="${since(o.del1 + 0.4, t, 0.4)}">不屬於任何分支了</text>`;
+  // version 2 lane: after the fast-forward it is simply main's history
+  const v2c = mix(V2, color, ff);
+  g += grow(branchOff(X.m, L.main, X.c, L.v2), v2c, 1);
+  g += node(X.m, L.main, color, ff < 0.5, undefined, t);
+  g += `<text x="${X.m - 24}" y="${L.main + 6}" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="18" fill="${ff < 0.5 ? color : '#8b8b94'}" font-weight="${ff < 0.5 ? 600 : 400}">0e86477</text>`;
+  g += node(X.c, L.v2, v2c, true, undefined, t) + label(X.c, L.v2 - 24, '89553d4', v2c, 1, true);
+  $('svg-' + k).innerHTML = g;
+
+  Reel.paintTag($('t1-' + k), B1, V1, X.c + 24, L.v1 - 17, 1 - since(o.del1, t, 0.4));
+  const t2 = $('t2-' + k), del2 = since(o.del2, t, 0.4);
+  Reel.paintTag(t2, B2, V2, X.c + 24, L.v2 - 17, 1 - del2);
+  // main slides along to 89553d4, parking just above the v2 tag until that tag is gone
+  const parkY = L.v2 - 17 - 36, parkX = X.c + 50;   // clear of the 89553d4 label
+  const mx = ff < 1 ? lerp(X.m + 24, parkX, ff) : lerp(parkX, X.c + 24, ease(del2));
+  const my = ff < 1 ? lerp(L.main - 17, parkY, ff) : lerp(parkY, L.v2 - 17, ease(del2));
+  const tm = $('tm-' + k);
+  Reel.paintTag(tm, 'main', color, mx, my);
+  const vt = $('vt-' + k);
+  vt.style.left = (mx + tm.offsetWidth + (k === 'lo' ? 92 : 8)) + 'px'; vt.style.top = my + 'px';
+  const tagIn = since(o.tag, t, 0.4);
+  vt.style.opacity = tagIn; vt.style.transform = `scale(${o.tag !== undefined ? backOut(tagIn) : 1})`;
+  return { tm };
+}
+
+function renderExtra(s, t) {
+  // feedback table: rows fade in, then the version 2 column is picked
+  ROWS.forEach((r, i) => { $('row' + i).style.opacity = 0.15 + 0.85 * since(s.at.table === undefined ? undefined : s.at.table + i * 0.35, t, 0.35); });
+  const pick = since(s.at.pick, t, 0.5), col = $('pick');
+  col.style.left = '378px'; col.style.width = '176px';
+  col.style.background = `rgba(250,204,21,${0.1 * pick})`; col.style.border = `2px solid rgba(250,204,21,${0.8 * pick})`;
+
+  const lo = drawRepo('lo', { merge: s.at.merge, del1: s.at.delV1, del2: s.at.delV2, tag: s.at.tag }, t);
+  drawRepo('re', { merge: s.at.pushMain, del1: s.at.delRemote, del2: s.at.delRemote, tag: s.at.pushTag }, t);
+  // HEAD: on version 2 (end of step 7) until git checkout main, then always on main
+  const onMain = s.at.toMain !== undefined && t >= s.at.toMain;
+  const tag = onMain ? lo.tm : $('t2-lo');
+  $('head').style.left = (parseFloat(tag.style.left) + tag.offsetWidth + 8) + 'px';
+  $('head').style.top = (parseFloat(tag.style.top) + 2) + 'px';
+}
+
+Reel.finish(renderExtra);
+</script>
+</body>
+</html>

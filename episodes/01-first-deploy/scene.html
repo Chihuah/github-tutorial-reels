@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>建立專案並首次部署</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@400;600&display=block" rel="stylesheet">
+<link rel="stylesheet" href="../../lib/reel.css">
+<style>
+.code{top:16px;height:128px}
+.code .row{height:27px}
+.code .fname{font-size:18px;color:#d4d4d8}
+.code .fname em{font-style:normal;font-weight:600;margin-left:10px;color:#4ade80}
+.minicalc{top:16px;height:128px}
+.slot{position:absolute;left:440px;top:24px;width:558px;height:84px;border:2px dashed #2c2c33;border-radius:14px;display:flex;align-items:center;justify-content:center;font:400 22px var(--sans);color:var(--dimmer)}
+.chip{position:absolute;left:456px;top:42px;font:600 21px/1 var(--mono);color:#fde68a;background:rgba(245,158,11,.14);border:2px solid rgba(245,158,11,.7);border-radius:12px;padding:12px 16px;opacity:0}
+.graph{height:150px}
+.pages{position:absolute;left:26px;right:26px;top:152px;height:70px;background:var(--panel2);border:1.5px solid #2c2c33;border-radius:14px;opacity:0}
+.pages svg{position:absolute;left:18px;top:18px;width:34px;height:34px;color:#a78bfa}
+.pages .t1{position:absolute;left:66px;top:11px;font:700 22px/1.2 var(--sans);color:#fafafa}
+.pages .t2{position:absolute;left:66px;top:40px;font:400 18px/1.2 var(--mono);color:#a1a1aa;white-space:nowrap}
+.pages .st{position:absolute;right:16px;top:17px;font:700 20px/1 var(--sans);border-radius:999px;padding:9px 16px;color:#fff;white-space:nowrap}
+</style>
+</head>
+<body>
+<script src="../../lib/reel.js"></script>
+<script src="../../lib/graph.js"></script>
+<script>
+const { clamp, ease, easeOut, backOut, lerp, mix, rgba, esc, $, wait, ev, step, typeCmd, out, cue, fly, pop } = Reel;
+const { since, node, label, grow, line } = G;
+
+const BLUE = '#3b82f6', ORANGE = '#f59e0b', GREEN = '#22c55e', PURPLE = '#a78bfa';
+Reel.setup({
+  kicker: 'GitHub 實戰教學｜步驟 1',
+  title: '建立專案並首次部署',
+  stages: [
+    { key: 'wd', icon: 'folder', zh: '工作目錄', en: 'Working Directory', cmd: '編輯檔案', h: 160 },
+    { key: 'st', icon: 'staging', zh: '暫存區', en: 'Staging Area', cmd: 'git add', h: 136 },
+    { key: 'lo', icon: 'repo', zh: '本機儲存庫', en: 'Local Repository', cmd: 'git commit', h: 150 },
+    { key: 're', icon: 'cloud', zh: '遠端 GitHub', en: 'Remote · origin', cmd: 'git push', h: 242, icTop: 28 },
+  ],
+  steps: 6,
+  stepColors: ['#60a5fa', PURPLE, GREEN, BLUE, ORANGE, PURPLE, PURPLE],
+  stepStage: [null, 3, 2, 0, 1, 3, 3],
+  intro: { cap: '從零開始做一個計算機網站', sub: '建立 repository → 寫程式 → 推送 → 發布成網頁' },
+  outro: { cap: '建立 → clone → add → commit → push', sub: '再打開 GitHub Pages，網站就上線了' },
+  caps: [
+    null,
+    { cap: '在 GitHub 建立 repository', sub: '名稱 calculator-app，勾選 Add a README file' },
+    { cap: 'git clone：下載到自己的電腦', sub: '本機有了一份完整的複本，包含所有 commit' },
+    { cap: '建立 3 個檔案', sub: '新檔案還沒被 Git 追蹤：Untracked files' },
+    { cap: 'git add . 再 commit', sub: '第一個自己的 commit <span style="font-family:var(--mono);color:#4ade80">3108cfa</span>：3 個檔案、154 行' },
+    { cap: 'git push：送上 GitHub', sub: 'GitHub 上的 main 也更新到 3108cfa' },
+    { cap: '啟用 GitHub Pages', sub: 'Settings → Pages → 選 main → Save' },
+  ],
+});
+
+// ---------- card content ----------
+$('card-wd').insertAdjacentHTML('beforeend', `
+  <div class="code" id="files">
+    <div class="row" id="f0"><span class="fname">README.md</span></div>
+    <div class="row" id="f1"><span class="fname">index.html<em class="u">U</em></span></div>
+    <div class="row" id="f2"><span class="fname">script.js<em class="u">U</em></span></div>
+    <div class="row" id="f3"><span class="fname">style.css<em class="u">U</em></span></div>
+  </div>
+  <div class="minicalc" id="calc"></div>`);
+$('card-st').insertAdjacentHTML('beforeend', `<div class="slot" id="slot">空的</div><div class="chip" id="chip">index.html · script.js · style.css</div>`);
+for (const k of ['lo', 're']) {
+  $('card-' + k).insertAdjacentHTML('beforeend', `<div class="graph"><svg id="svg-${k}" width="580" height="150"></svg><div class="tag" id="tag-${k}"></div></div>`);
+}
+$('card-re').insertAdjacentHTML('beforeend', `
+  <div class="pages" id="pages">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>
+    <div class="t1">GitHub Pages</div>
+    <div class="t2" id="pgline"></div>
+    <div class="st" id="pgst"></div>
+  </div>`);
+
+// ---------- timeline ----------
+step(0);
+cue('這一集從零開始：在 GitHub 建立專案、寫好計算機、第一次推送，再發布成網站。');
+wait(3.0);
+
+// STEP 1 — create the repository on GitHub
+step(1); wait(0.3);
+cue('先在 GitHub 網頁上建立 repository，名稱是 calculator-app，並且勾選 Add a README file。');
+typeCmd('# 在 GitHub 網頁上建立 calculator-app', 16);
+ev('created'); pop(3);
+wait(2.0);
+cue('因為勾選了 README，GitHub 會自動產生第一個 commit：779adb0。');
+wait(3.0);
+
+// STEP 2 — clone
+step(2); wait(0.3);
+cue('用 git clone 把這個 repository 下載到自己的電腦。');
+typeCmd('git clone https://github.com/Chihuah/calculator-app.git', 26);
+fly(3, 2, '779adb0', 1.0); ev('cloned', { at: Reel.now() + 1.0 });
+out([["Cloning into 'calculator-app'...", '']]);
+wait(1.4);
+cue('本機現在有一份完整的複本，用 cd 進入專案資料夾。');
+typeCmd('cd calculator-app');
+wait(2.6);
+
+// STEP 3 — create the three files
+step(3); wait(0.3);
+cue('在資料夾裡建立 index.html、style.css 和 script.js，計算機就完成了。');
+ev('files'); wait(2.4);
+cue('輸入 git status，新檔案會列在 Untracked files，代表 Git 還沒開始追蹤它們。');
+typeCmd('git status');
+out([['On branch main', 'c-dim'], ["Your branch is up to date with 'origin/main'.", 'c-dim'], ['Untracked files:', ''],
+     ['        index.html', 'c-red'], ['        script.js', 'c-red'], ['        style.css', 'c-red']], 0.07);
+wait(3.6);
+
+// STEP 4 — add and commit
+step(4); wait(0.3);
+cue('用 git add 點，把所有新檔案放進暫存區。');
+typeCmd('git add .');
+fly(0, 1, '3 個檔案', 0.9); wait(0.9);
+wait(1.4);
+cue('接著 commit。這是第一個自己的 commit：3108cfa，新增了 3 個檔案、154 行。');
+typeCmd('git commit -m "Initial calculator with basic operations"', 26);
+fly(1, 2, '3108cfa', 0.95); ev('committed', { at: Reel.now() + 0.95 });
+out([['[main 3108cfa] Initial calculator with basic operations', ''], [' 3 files changed, 154 insertions(+)', ''],
+     [' create mode 100644 index.html', 'c-dim'], [' create mode 100644 script.js', 'c-dim'], [' create mode 100644 style.css', 'c-dim']], 0.07);
+wait(0.95);
+wait(3.0);
+
+// STEP 5 — push
+step(5); wait(0.3);
+cue('用 git push 把 commit 送上 GitHub。');
+typeCmd('git push origin main');
+fly(2, 3, '3108cfa', 1.0); ev('pushed', { at: Reel.now() + 1.0 });
+wait(0.4);
+out([['To https://github.com/Chihuah/calculator-app.git', ''], ['   779adb0..3108cfa  main -> main', '']]);
+wait(0.6);
+wait(2.8);
+
+// STEP 6 — GitHub Pages
+step(6); wait(0.3);
+cue('最後到 repository 的 Settings，打開 Pages，來源選 main 分支，按下 Save。');
+typeCmd('# Settings → Pages → Branch: main → Save', 18);
+ev('pagesSetup'); wait(1.8);
+ev('pagesSave'); wait(1.2);
+cue('等幾分鐘，計算機就會出現在 chihuah.github.io/calculator-app，任何人都能打開。');
+ev('pagesLive'); pop(3); wait(1.0);
+ev('allok'); wait(3.0);
+cue('建立、clone、add、commit、push，再打開 Pages，第一次部署就完成了。');
+ev('outro'); wait(3.6);
+
+// ---------- episode-specific rendering ----------
+const XS = [40, 160];     // 779adb0, 3108cfa
+function drawRepo(k, at0, at1, t, color, tagText) {
+  const y = 62;
+  let g = '';
+  if (at0 === undefined || t < at0) { $('svg-' + k).innerHTML = ''; $('tag-' + k).style.opacity = 0; return; }
+  const p1 = since(at1, t, 0.5);
+  g += grow(line(XS[0], y, XS[1]), color, easeOut(p1));
+  g += node(XS[0], y, color, p1 <= 0, at0, t) + label(XS[0], y + 40, '779adb0', p1 > 0 ? '#8b8b94' : color, 1, p1 <= 0);
+  if (at1 !== undefined && t >= at1) g += node(XS[1], y, color, true, at1, t) + label(XS[1], y + 40, '3108cfa', color, clamp(p1 * 2), true);
+  $('svg-' + k).innerHTML = g;
+  Reel.paintTag($('tag-' + k), tagText, color, lerp(XS[0], XS[1], ease(p1)) + 24, y - 17, since(at0, t, 0.4));
+}
+
+function renderExtra(s, t) {
+  // working directory: README after the clone, then the three new files
+  $('f0').style.opacity = since(s.at.cloned, t, 0.4);
+  const fileIn = i => since(s.at.files === undefined ? undefined : s.at.files + i * 0.35, t, 0.35);
+  const committed = since(s.at.committed, t, 0.4);
+  for (let i = 1; i <= 3; i++) {
+    $('f' + i).style.opacity = fileIn(i - 1);
+    $('f' + i).querySelector('em').style.opacity = 1 - committed;
+  }
+  $('calc').style.opacity = since(s.at.files === undefined ? undefined : s.at.files + 1.0, t, 0.5);
+  G.calc($('calc'), { theme: 0 });
+
+  // staging: the three files sit here between git add and git commit
+  let chipOp = since(s.land[1], t, 0.35);
+  const commitFly = s.at.committed !== undefined ? s.at.committed - 0.95 : undefined;
+  if (commitFly !== undefined) chipOp = Math.min(chipOp, 1 - since(commitFly, t, 0.5));
+  $('chip').style.opacity = chipOp; $('slot').style.opacity = 1 - chipOp;
+
+  drawRepo('lo', s.at.cloned, s.at.committed, t, GREEN, 'HEAD → main');
+  drawRepo('re', s.at.created, s.at.pushed, t, PURPLE, 'main');
+
+  // GitHub Pages panel
+  const pin = since(s.at.pagesSetup, t, 0.5);
+  $('pages').style.opacity = pin; $('pages').style.transform = `translateY(${(1 - easeOut(pin)) * 14}px)`;
+  const live = s.at.pagesLive !== undefined && t >= s.at.pagesLive;
+  const saved = s.at.pagesSave !== undefined && t >= s.at.pagesSave;
+  $('pgline').innerHTML = live ? '<span style="color:#4ade80">https://chihuah.github.io/calculator-app/</span>'
+    : 'Source: Deploy from a branch · <span style="color:#fafafa">main</span> / (root)';
+  const st = $('pgst');
+  if (live) { st.textContent = '已上線'; st.style.background = '#238636'; st.style.transform = `scale(${backOut(since(s.at.pagesLive, t, 0.4))})`; }
+  else if (saved) { st.textContent = '部署中…'; st.style.background = '#9a6700'; st.style.transform = 'none'; }
+  else { st.textContent = 'Save'; st.style.background = '#238636'; st.style.transform = s.at.pagesSave !== undefined && s.at.pagesSave - t < 0.25 ? 'scale(.92)' : 'none'; }
+  $('pages').style.borderColor = live ? rgba('#3fb950', 0.6) : '#2c2c33';
+}
+
+Reel.finish(renderExtra);
+</script>
+</body>
+</html>

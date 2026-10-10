@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>測試後用 PR 合併</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@400;600&display=block" rel="stylesheet">
+<link rel="stylesheet" href="../../lib/reel.css">
+<style>
+.tests{position:absolute;left:440px;top:18px;width:420px;height:136px;background:var(--panel2);border:1px solid #24242a;border-radius:12px;padding:12px 14px}
+.tests .tt{font:700 20px/1 var(--sans);color:#d4d4d8;display:flex;justify-content:space-between}
+.tests .tt span{font:600 17px/1 var(--mono);color:#8b8b94}
+.tests .keys{margin-top:14px;display:flex;flex-wrap:wrap;gap:6px}
+.tests .k{font:600 16px/1 var(--mono);color:#a1a1aa;background:#1b1b20;border:1px solid #2c2c33;border-radius:6px;padding:5px 7px}
+.tests .res{position:absolute;left:14px;bottom:12px;font:700 20px/1 var(--mono)}
+.tests .all{position:absolute;right:14px;bottom:12px;display:flex;gap:6px}
+.tests .all i{display:block;width:16px;height:16px;border-radius:50%;background:#2c2c33}
+.minicalc .disp{font-size:12px}
+.graph{height:236px}
+.tag{font-size:17px}
+.head{position:absolute;font:700 15px/1 var(--mono);color:#0b0b0e;background:#38bdf8;border-radius:6px;padding:5px 8px;white-space:nowrap}
+.head:after{content:"";position:absolute;left:12px;bottom:-6px;border:6px solid transparent;border-bottom:0;border-top-color:#38bdf8}
+.pr{position:absolute;left:26px;right:26px;top:200px;height:76px;background:var(--panel2);border:1.5px solid #2c2c33;border-radius:14px;opacity:0}
+.pr svg{position:absolute;left:18px;top:21px;width:34px;height:34px}
+.pr .t1{position:absolute;left:66px;top:12px;font:700 25px/1.2 var(--sans);color:#fafafa;white-space:nowrap}
+.pr .t1 span{color:#8b8b94;font-weight:500}
+.pr .t2{position:absolute;left:66px;top:46px;font:400 17px/1.2 var(--mono);color:#8b8b94;white-space:nowrap}
+.pr .t2 b{font-weight:600;border-radius:6px;padding:2px 6px}
+.pr .st{position:absolute;right:16px;top:20px;font:700 20px/1 var(--sans);border-radius:999px;padding:9px 16px;color:#fff;white-space:nowrap}
+</style>
+</head>
+<body>
+<script src="../../lib/reel.js"></script>
+<script src="../../lib/graph.js"></script>
+<script>
+const { clamp, ease, easeOut, backOut, lerp, mix, rgba, esc, $, wait, ev, step, typeCmd, out, cue, fly, pop } = Reel;
+const { since, node, label, grow, branchOff, mergeIn, line } = G;
+
+const GREEN = '#22c55e', PURPLE = '#a78bfa', ORANGE = '#f59e0b';
+const BR = 'feature/memory-function';
+Reel.setup({
+  kicker: 'GitHub 實戰教學｜步驟 6',
+  title: '完整測試後用 PR 合併',
+  termFont: 21,
+  stages: [
+    { key: 'wd', icon: 'test', zh: '本機測試', en: 'Local Test', cmd: 'http.server', color: '#3b82f6' },
+    { key: 'lo', icon: 'repo', zh: '本機儲存庫', en: 'Local Repository', cmd: 'git pull', h: 236 },
+    { key: 're', icon: 'cloud', zh: '遠端 GitHub', en: 'Remote · origin', cmd: 'Pull Request', h: 294, icTop: 40 },
+  ],
+  steps: 5,
+  stepColors: ['#60a5fa', '#3b82f6', PURPLE, PURPLE, PURPLE, GREEN],
+  stepStage: [null, 0, 2, 2, 2, 1],
+  intro: { cap: '記憶功能做好了，可以合併了嗎？', sub: '先完整測試，再透過 Pull Request 審查與合併' },
+  outro: { cap: '測試 → PR → 審查 → 合併 → 清理分支', sub: '每個功能都經過測試和審查，才進入 main' },
+  caps: [
+    null,
+    { cap: '在本機跑完 5 個測試', sub: '按完 M+ 畫面數字不會清掉，輸入新數字前要先按 C' },
+    { cap: '建立 Pull Request #3', sub: '說明功能、變更內容，附上測試清單' },
+    { cap: 'Code Review：逐行檢查 Files changed', sub: '命名清楚嗎？有錯誤處理嗎？還有多餘的 console.log 嗎？' },
+    { cap: 'Create a merge commit', sub: '保留分支上的 2 個 commit，產生合併 commit <span style="font-family:var(--mono);color:#a78bfa">0e86477</span>' },
+    { cap: '更新本機 main，刪除用完的分支', sub: 'git branch -d 刪本機，git push --delete 刪 GitHub 上的' },
+  ],
+});
+
+// ---------- card content ----------
+$('card-wd').insertAdjacentHTML('beforeend', `
+  <div class="tests"><div class="tt"><b id="tname">測試清單</b><span id="tnum"></span></div>
+    <div class="keys" id="tkeys"></div><div class="res" id="tres"></div><div class="all" id="tall">${'<i></i>'.repeat(5)}</div></div>
+  <div class="minicalc" id="calc"></div>`);
+for (const k of ['lo', 're']) {
+  $('card-' + k).insertAdjacentHTML('beforeend', `<div class="graph"><svg id="svg-${k}" width="580" height="236"></svg>
+    <div class="tag" id="tm-${k}"></div><div class="tag" id="tf-${k}"></div>${k === 'lo' ? '<div class="head" id="head">HEAD</div>' : ''}</div>`);
+}
+$('card-re').insertAdjacentHTML('beforeend', `
+  <div class="pr" id="pr">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" id="pricon"><circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5v7"/><path d="M18 15.5V9a3 3 0 0 0-3-3h-4"/><path d="M13 3.5 10.5 6 13 8.5"/></svg>
+    <div class="t1">Feature/memory function <span>#3</span></div>
+    <div class="t2">${BR} → main · 2 commits · <b id="files">3 files +81</b></div>
+    <div class="st" id="prst">Open</div>
+  </div>`);
+
+// The handout's five tests (6.1), with C pressed before each new number:
+// tools/calc-test.mjs runs these against the real script.js and gets the same results.
+const TESTS = [
+  ['5', 'M+', 'C', '3', 'M+', 'MR'],
+  ['MC', '10', 'M+', 'C', '3', 'M-', 'MR'],
+  ['MC', '15', 'M+', 'C', 'MR'],
+  ['20', 'M+', 'MC', 'MR'],
+  ['MC', '5', 'M+', 'C', '10', 'M+', 'C', '3', 'M-', 'MR'],
+];
+// display after each key, using the same rules as script.js
+function runKeys(keys) {
+  let input = '0', mem = 0; const shown = [];
+  for (const k of keys) {
+    if (k === 'C') input = '0';
+    else if (k === 'M+') mem += eval(input);
+    else if (k === 'M-') mem -= eval(input);
+    else if (k === 'MR') input = mem.toString();
+    else if (k === 'MC') mem = 0;
+    else for (const ch of k) input = input === '0' && ch !== '.' ? ch : input + ch;
+    shown.push(input);
+  }
+  return shown;
+}
+const SHOWN = TESTS.map(runKeys);
+const KEY_DT = 0.32, TEST_PAD = 0.9;
+const testStart = i => TESTS.slice(0, i).reduce((a, k) => a + k.length * KEY_DT + TEST_PAD, 0);
+
+// ---------- timeline ----------
+step(0);
+cue('記憶功能已經在分支上了。合併之前，先完整測試，再用 Pull Request 讓別人審查。');
+wait(3.0);
+
+// STEP 1 — local tests
+step(1); wait(0.3);
+cue('用 python3 -m http.server 在本機開一個網頁伺服器，打開計算機來測試。');
+typeCmd('python3 -m http.server 8000', 20);
+out([['Serving HTTP on 0.0.0.0 port 8000 (http://0.0.0.0:8000/) ...', '']]);
+wait(0.6);
+cue('照講義跑 5 個測試。注意：按完 M+ 畫面上的數字不會清掉，輸入新數字前要先按 C，結果才會正確。');
+ev('tests');
+wait(testStart(5) + 0.4);
+cue('5 個測試全部通過，可以準備合併了。');
+wait(2.2);
+
+// STEP 2 — open the pull request
+step(2); wait(0.3);
+cue('確認都已經 push 之後，到 GitHub 建立 Pull Request，寫清楚功能、變更內容和測試清單。');
+typeCmd('# 在 GitHub 建立 Pull Request #3', 16);
+ev('pr'); wait(3.6);
+
+// STEP 3 — code review
+step(3); wait(0.3);
+cue('審查的人打開 Files changed，逐行檢查：命名清楚嗎？有錯誤處理嗎？有沒有忘記刪掉的 console.log？');
+ev('review'); wait(5.0);
+
+// STEP 4 — merge
+step(4); wait(0.3);
+cue('審查通過後按下 Merge pull request，選 Create a merge commit。');
+ev('mergeBtn'); wait(2.2);
+cue('分支上的兩個 commit 都保留下來，main 多了一個合併 commit：0e86477。');
+ev('merge'); pop(2); wait(3.4);
+
+// STEP 5 — update local main and clean up
+step(5); wait(0.3);
+cue('回到終端機，切回 main，用 git pull 拿回合併結果。');
+typeCmd('git checkout main');
+ev('checkoutMain');
+out([["Switched to branch 'main'", ''], ["Your branch is up to date with 'origin/main'.", '']]);
+typeCmd('git pull origin main');
+fly(2, 1, '0e86477', 1.0); ev('pullLand', { at: Reel.now() + 1.0 });
+out([
+  ['From https://github.com/Chihuah/calculator-app', ''],
+  [' * branch            main       -> FETCH_HEAD', ''],
+  ['   e5e29b9..0e86477  main       -> origin/main', ''],
+  ['Updating e5e29b9..0e86477', ''],
+  ['Fast-forward', ''],
+  [[' index.html |  9 ', ''], ['+++++++++', 'c-green']],
+  [[' script.js  | 45 ', ''], ['+++++++++++++++++++++++++++++++++++++++++++++', 'c-green']],
+  [[' style.css  | 27 ', ''], ['+++++++++++++++++++++++++++', 'c-green']],
+  [' 3 files changed, 81 insertions(+)', ''],
+], 0.07);
+wait(2.6);
+cue('功能已經進入 main。用 git branch -d 刪掉本機的分支，再用 git push --delete 刪掉 GitHub 上的分支。');
+typeCmd('git branch -d feature/memory-function', 20);
+ev('delLocal');
+out([['Deleted branch feature/memory-function (was d459664).', '']]);
+typeCmd('git push origin --delete feature/memory-function', 24);
+ev('delRemote', { at: Reel.now() + 0.5 });
+out([['To https://github.com/Chihuah/calculator-app.git', ''], [' - [deleted]         feature/memory-function', 'c-red']]);
+wait(1.6);
+ev('allok'); wait(2.4);
+cue('測試、建立 PR、審查、合併，再清理分支。每個功能都經過測試和審查，main 就能一直保持穩定。');
+ev('outro'); wait(4.2);
+
+// ---------- episode-specific rendering ----------
+const X = { m: 60, a: 170, b: 280, g: 420 };    // e5e29b9, f3cdf64, d459664, 0e86477
+const LANES = { lo: { main: 160, feat: 70 }, re: { main: 140, feat: 56 } };
+
+function drawRepo(k, o, t) {
+  const color = k === 'lo' ? GREEN : PURPLE, { main: my, feat: fy } = LANES[k];
+  const pM = since(o.merge, t, 0.5);
+  let g = `<line x1="0" y1="${my}" x2="${X.m - 14}" y2="${my}" stroke="#3f3f46" stroke-width="4" stroke-dasharray="4 6"/>`;
+  g += grow(branchOff(X.m, my, X.a, fy), ORANGE, 1) + grow(`M${X.a + 14},${fy} L${X.b - 14},${fy}`, ORANGE, 1);
+  g += grow(line(X.m, my, X.g), color, easeOut(pM)) + grow(mergeIn(X.b, fy, X.g, my), ORANGE, easeOut(pM));
+  const mainTip = pM > 0 ? 'g' : 'm';
+  g += node(X.m, my, color, mainTip === 'm', undefined, t) + label(X.m, my + 40, 'e5e29b9', mainTip === 'm' ? color : '#8b8b94', 1, mainTip === 'm');
+  g += node(X.a, fy, ORANGE, false, undefined, t) + label(X.a, fy - 24, 'f3cdf64', '#8b8b94');
+  g += node(X.b, fy, ORANGE, true, undefined, t) + label(X.b, fy - 24, 'd459664', ORANGE, 1, true);
+  if (o.merge !== undefined && t >= o.merge) g += node(X.g, my, color, true, o.merge, t) + label(X.g, my + 40, '0e86477', color, clamp(pM * 2), true);
+  $('svg-' + k).innerHTML = g;
+  const mx = lerp(X.m, X.g, ease(pM)) + 24, fx = X.b + 24;
+  Reel.paintTag($('tm-' + k), 'main', color, mx, my - 17);
+  Reel.paintTag($('tf-' + k), BR, ORANGE, fx, fy - 17, 1 - since(o.del, t, 0.5));
+  if (k === 'lo') {   // HEAD is on the feature branch until git checkout main
+    const toMain = ease(since(o.onMainAt, t, 0.5));
+    $('head').style.left = (lerp(fx, mx, toMain) + 30) + 'px';
+    $('head').style.top = (lerp(fy, my, toMain) - 50) + 'px';
+  }
+}
+
+function renderExtra(s, t) {
+  // ----- tests -----
+  const T0 = s.at.tests;
+  let shown = '0', idx = -1, kIdx = -1;
+  if (T0 !== undefined && t >= T0) {
+    for (let i = 0; i < 5; i++) if (t >= T0 + testStart(i)) idx = i;
+    kIdx = Math.min(TESTS[idx].length - 1, Math.floor((t - T0 - testStart(idx)) / KEY_DT));
+    shown = SHOWN[idx][kIdx];
+  }
+  const done = i => T0 !== undefined && t >= T0 + testStart(i) + TESTS[i].length * KEY_DT;
+  if (idx >= 0) {
+    $('tname').textContent = `測試 ${idx + 1}`;
+    $('tnum').textContent = `${[...Array(5).keys()].filter(done).length} / 5`;
+    $('tkeys').innerHTML = TESTS[idx].map((k, i) => {
+      const on = i === kIdx && !done(idx), past = i < kIdx || done(idx);
+      return `<span class="k" style="${on ? 'background:#facc15;color:#0b0b0e;border-color:#facc15' : past ? 'color:#d4d4d8' : ''}">${k}</span>`;
+    }).join('');
+    $('tres').innerHTML = done(idx) ? `<span style="color:#4ade80">⇒ ${SHOWN[idx].at(-1)} ✓</span>` : '';
+  } else { $('tname').textContent = '測試清單'; $('tnum').textContent = ''; $('tkeys').innerHTML = '<span class="k">5 個測試</span>'; $('tres').innerHTML = ''; }
+  [...$('tall').children].forEach((d, i) => { d.style.background = done(i) ? '#22c55e' : '#2c2c33'; });
+  G.calc($('calc'), { theme: 1, pct: true, mem: true, display: shown });
+
+  // ----- repositories -----
+  drawRepo('lo', { merge: s.at.pullLand, onMainAt: s.at.checkoutMain, del: s.at.delLocal }, t);
+  drawRepo('re', { merge: s.at.merge, del: s.at.delRemote }, t);
+
+  // ----- pull request -----
+  const prIn = since(s.at.pr, t, 0.5);
+  $('pr').style.opacity = prIn; $('pr').style.transform = `translateY(${(1 - easeOut(prIn)) * 16}px)`;
+  const merged = s.at.merge !== undefined && t >= s.at.merge;
+  const prColor = merged ? '#a371f7' : '#3fb950';
+  $('pricon').style.color = prColor;
+  $('pr').style.borderColor = s.at.pr !== undefined ? rgba(prColor, 0.55) : '#2c2c33';
+  const st = $('prst');
+  if (merged) { st.textContent = 'Merged'; st.style.background = '#8957e5'; st.style.transform = `scale(${backOut(since(s.at.merge, t, 0.4))})`; }
+  else if (s.at.mergeBtn !== undefined && t >= s.at.mergeBtn) {
+    st.textContent = 'Create a merge commit'; st.style.background = '#238636';
+    st.style.transform = `scale(${(s.at.merge ?? Infinity) - t < 0.25 ? 0.92 : backOut(since(s.at.mergeBtn, t, 0.4))})`;
+  } else { st.textContent = 'Open'; st.style.background = '#238636'; st.style.transform = 'none'; }
+  const rv = s.step === 3 ? 0.5 + 0.5 * Math.sin((t - s.stepAt) * 5) : 0;
+  $('files').style.color = s.at.review !== undefined ? '#4ade80' : '#8b8b94';
+  $('files').style.background = `rgba(74,222,128,${s.at.review !== undefined ? 0.08 + 0.18 * rv : 0})`;
+}
+
+Reel.finish(renderExtra);
+</script>
+</body>
+</html>
