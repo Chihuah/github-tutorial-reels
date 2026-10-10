@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>分支與 Pull Request</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@400;600&display=block" rel="stylesheet">
+<link rel="stylesheet" href="../../lib/reel.css">
+<style>
+/* the % button adds a sixth row to the mini calculator, so rows are shorter here */
+.minicalc{padding:6px}
+.minicalc .disp{height:16px;line-height:16px;margin-bottom:4px}
+.minicalc .g{grid-auto-rows:13px;gap:3px}
+.code{padding:9px 14px}
+.code .fname{color:#a1a1aa;font-size:17px}
+.code .fname em{font-style:normal;color:var(--orange);font-weight:600;margin-left:10px}
+
+.graph{height:236px}
+.tag{font-size:17px}
+.head{position:absolute;font:700 15px/1 var(--mono);color:#0b0b0e;background:#38bdf8;border-radius:6px;padding:5px 8px;white-space:nowrap}
+.head:after{content:"";position:absolute;left:12px;bottom:-6px;border:6px solid transparent;border-bottom:0;border-top-color:#38bdf8}
+
+/* pull request panel on the GitHub card */
+.pr{position:absolute;left:26px;right:26px;top:200px;height:76px;background:var(--panel2);border:1.5px solid #2c2c33;border-radius:14px;opacity:0}
+.pr svg{position:absolute;left:18px;top:21px;width:34px;height:34px}
+.pr .t1{position:absolute;left:66px;top:12px;font:700 25px/1.2 var(--sans);color:#fafafa;white-space:nowrap}
+.pr .t1 span{color:#8b8b94;font-weight:500}
+.pr .t2{position:absolute;left:66px;top:46px;font:400 17px/1.2 var(--mono);color:#8b8b94;white-space:nowrap}
+.pr .t2 b{font-weight:600}
+.pr .st{position:absolute;right:16px;top:20px;font:700 20px/1 var(--sans);border-radius:999px;padding:9px 16px;color:#fff;white-space:nowrap}
+</style>
+</head>
+<body>
+<script src="../../lib/reel.js"></script>
+<script>
+const { clamp, ease, easeOut, backOut, lerp, mix, rgba, esc, $, wait, ev, step, typeCmd, out, cue, fly, pop } = Reel;
+
+const GREEN = '#22c55e', PURPLE = '#a78bfa', ORANGE = '#f59e0b';
+Reel.setup({
+  kicker: 'GitHub 實戰教學｜步驟 3',
+  title: '分支與 Pull Request',
+  termFont: 21,
+  stages: [
+    { key: 'wd', icon: 'folder', zh: '工作目錄', en: 'Working Directory', cmd: '編輯檔案' },
+    { key: 'lo', icon: 'repo', zh: '本機儲存庫', en: 'Local Repository', cmd: 'git commit', h: 236 },
+    { key: 're', icon: 'cloud', zh: '遠端 GitHub', en: 'Remote · origin', cmd: 'git push', h: 294, icTop: 40 },
+  ],
+  steps: 6,
+  stepColors: ['#60a5fa', GREEN, '#3b82f6', PURPLE, PURPLE, PURPLE, GREEN],
+  stepStage: [null, 1, 0, 2, 2, 2, 1],
+  intro: { cap: '幫計算機加上 % 按鈕', sub: '這次在分支上開發，用 Pull Request 審查後再合併' },
+  outro: { cap: '分支 → commit → push → PR → 合併 → pull', sub: '團隊協作最常用的流程：修改都先經過審查' },
+  caps: [
+    null,
+    { cap: 'git checkout -b：建立新分支並切換過去', sub: '<span style="color:#38bdf8;font-family:var(--mono)">HEAD</span> 標示你現在所在的分支' },
+    { cap: '加上 % 按鈕，在分支上 commit', sub: '新的 commit 只在 feature 分支上，main 不受影響' },
+    { cap: 'git push：把分支送上 GitHub', sub: 'GitHub 上也有了 feature/percentage-button' },
+    { cap: '在 GitHub 建立 Pull Request', sub: '請別人審查：Files changed 列出每一行修改' },
+    { cap: '審查通過，按下 Merge pull request', sub: 'GitHub 在 main 上產生合併 commit <span style="font-family:var(--mono);color:#a78bfa">e5e29b9</span>' },
+    { cap: '切回 main，用 git pull 拿回合併結果', sub: '最後用 git branch -d 刪掉用完的分支' },
+  ],
+});
+
+// ---------- card content ----------
+$('card-wd').insertAdjacentHTML('beforeend', `
+  <div class="code">
+    <div class="row"><span class="fname">index.html<em id="m1">M</em></span></div>
+    <div class="row"><span id="l1"></span></div>
+    <div class="row"><span class="fname">script.js<em id="m2">M</em></span></div>
+    <div class="row"><span id="l2"></span></div>
+  </div>
+  <div class="minicalc"><div class="disp">0</div><div class="g" id="mg"></div></div>`);
+// real button order from index.html; the % button is inserted after C
+['b','pct','b','b','b','b','b','b','b','b','b','b','b','b','b','b','eq','zr','b'].forEach(k => {
+  const e = document.createElement('div'); if (k !== 'b') e.className = k; e.dataset.k = k; $('mg').appendChild(e);
+});
+for (const k of ['lo', 're']) {
+  $('card-' + k).insertAdjacentHTML('beforeend',
+    `<div class="graph"><svg id="svg-${k}" width="580" height="236"></svg>
+     <div class="tag" id="tm-${k}"></div><div class="tag" id="tf-${k}"></div>${k === 'lo' ? '<div class="head" id="head">HEAD</div>' : ''}</div>`);
+}
+$('card-re').insertAdjacentHTML('beforeend', `
+  <div class="pr" id="pr">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" id="pricon"><circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5v7"/><path d="M18 15.5V9a3 3 0 0 0-3-3h-4"/><path d="M13 3.5 10.5 6 13 8.5"/></svg>
+    <div class="t1">Add percentage calculation feature <span>#1</span></div>
+    <div class="t2">feature/percentage-button → main · 1 commit · <b id="files">2 files +15</b></div>
+    <div class="st" id="prst">Open</div>
+  </div>`);
+
+// ---------- timeline ----------
+step(0);
+cue('這一集要幫計算機加上百分比按鈕，並且用 Pull Request，讓修改先經過審查再合併。');
+wait(2.8);
+
+// STEP 1 — create the branch
+step(1); wait(0.3);
+cue('先用 git checkout -b 建立一個新分支，名稱是 feature/percentage-button，並且切換過去。');
+typeCmd('git checkout -b feature/percentage-button', 20);
+ev('branch');
+out([["Switched to a new branch 'feature/percentage-button'", '']]);
+wait(2.6);
+cue('git branch 列出所有分支，星號代表目前所在的分支。');
+typeCmd('git branch');
+out([['* feature/percentage-button', 'c-green'], ['  main', '']]);
+wait(3.0);
+
+// STEP 2 — edit and commit on the branch
+step(2); wait(0.3);
+cue('在 index.html 加上 % 按鈕，在 script.js 加上計算百分比的函式。');
+wait(0.3); ev('edit'); wait(2.2);
+typeCmd('git status --short');
+out([[[' M', 'c-red'], [' index.html', '']], [[' M', 'c-red'], [' script.js', '']]]);
+wait(2.0);
+cue('add 和 commit 之後，新的 commit 17bde93 只出現在 feature 分支上，main 完全沒有改變。');
+typeCmd('git add index.html script.js', 20);
+typeCmd('git commit -m "Add percentage calculation button"', 24);
+fly(0, 1, '17bde93', 0.95); ev('commitLand', { at: Reel.now() + 0.95 });
+out([['[feature/percentage-button 17bde93] Add percentage calculation button', ''], [' 2 files changed, 15 insertions(+)', '']]);
+wait(0.95);
+wait(2.8);
+
+// STEP 3 — push the branch
+step(3); wait(0.3);
+cue('用 git push 把這個分支送上 GitHub。');
+typeCmd('git push origin feature/percentage-button', 20);
+fly(1, 2, '17bde93', 1.0); ev('pushLand', { at: Reel.now() + 1.0 });
+wait(0.4);
+out([['To https://github.com/Chihuah/calculator-app.git', ''], [' * [new branch]      feature/percentage-button -> feature/percentage-button', '']]);
+wait(0.6);
+wait(2.6);
+
+// STEP 4 — open the pull request on GitHub
+step(4); wait(0.3);
+cue('接著到 GitHub 網頁上建立 Pull Request，請別人審查這次的修改。');
+typeCmd('# 到 GitHub 網頁上建立 Pull Request', 16);
+ev('pr'); wait(2.6);
+cue('審查的人可以在 Files changed 看到每一行修改：這次改了 2 個檔案，新增 15 行。');
+ev('review'); wait(3.6);
+
+// STEP 5 — merge on GitHub
+step(5); wait(0.3);
+cue('審查沒問題後，按下 Merge pull request。');
+ev('mergeBtn'); wait(2.0);
+cue('GitHub 會在 main 上產生一個合併 commit：e5e29b9。');
+ev('merge'); pop(2); wait(3.6);
+
+// STEP 6 — back to local main
+step(6); wait(0.3);
+cue('回到終端機，切回 main 分支。這時本機的 main 還不知道 GitHub 上的合併。');
+typeCmd('git checkout main');
+ev('checkoutMain');
+out([["Switched to branch 'main'", ''], ["Your branch is up to date with 'origin/main'.", '']]);
+wait(3.0);
+cue('用 git pull 把合併結果拿回來，本機的 main 也更新到 e5e29b9。');
+typeCmd('git pull origin main');
+fly(2, 1, 'e5e29b9', 1.0); ev('pullLand', { at: Reel.now() + 1.0 });
+out([
+  ['From https://github.com/Chihuah/calculator-app', ''],
+  [' * branch            main       -> FETCH_HEAD', ''],
+  ['   7434ffb..e5e29b9  main       -> origin/main', ''],
+  ['Updating 7434ffb..e5e29b9', ''],
+  ['Fast-forward', ''],
+  [[' index.html |  1 ', ''], ['+', 'c-green']],
+  [[' script.js  | 14 ', ''], ['++++++++++++++', 'c-green']],
+  [' 2 files changed, 15 insertions(+)', ''],
+], 0.07);
+wait(2.8);
+cue('功能已經合併進 main，最後用 git branch -d 刪掉用完的分支。');
+typeCmd('git branch -d feature/percentage-button', 20);
+ev('delBranch');
+out([['Deleted branch feature/percentage-button (was 17bde93).', '']]);
+wait(1.2); ev('allok'); wait(3.0);
+cue('建分支、commit、push、開 PR、合併、pull，這就是團隊協作最常用的流程。');
+ev('outro'); wait(3.6);
+
+// ---------- episode-specific rendering ----------
+const X = { a: 40, b: 150, f: 270, m: 400 };          // 3108cfa, 7434ffb, 17bde93, e5e29b9
+const LANES = { lo: { main: 150, feat: 64 }, re: { main: 140, feat: 58 } };
+const since = (at, t, d) => at === undefined ? 0 : clamp((t - at) / d);
+const FONT = 'font-family="JetBrains Mono, DejaVu Sans Mono, monospace"';
+
+function node(x, y, color, filled, appear, t) {
+  if (appear !== undefined && t < appear) return '';
+  const sc = appear === undefined ? 1 : backOut((t - appear) / 0.45);
+  let g = '';
+  if (appear !== undefined) {
+    const r = 1 - clamp((t - appear) / 0.8);
+    if (r > 0) g += `<circle cx="${x}" cy="${y}" r="${16 * sc + 10 * r}" fill="none" stroke="${color}" stroke-opacity="${0.6 * r}" stroke-width="3"/>`;
+  }
+  return g + `<circle cx="${x}" cy="${y}" r="${Math.max(0, 14 * sc)}" fill="${filled ? color : '#0c0c0f'}" stroke="${filled ? color : '#71717a'}" stroke-width="4"/>`;
+}
+function label(x, y, text, color, op = 1, bold = false) {
+  return `<text x="${x}" y="${y}" text-anchor="middle" ${FONT} font-size="18" fill="${color}" opacity="${op}" font-weight="${bold ? 600 : 400}">${text}</text>`;
+}
+// a path that is revealed from start to end as p goes 0..1
+function grow(d, color, p) {
+  if (p <= 0) return '';
+  return `<path d="${d}" fill="none" stroke="${color}" stroke-width="4" pathLength="1" stroke-dasharray="${p >= 1 ? 'none' : p + ' 1'}"/>`;
+}
+
+// k: 'lo' | 're'; o: times for the branch, its commit, the merge and branch deletion
+function drawRepo(k, o, t) {
+  const color = k === 'lo' ? GREEN : PURPLE, { main: my, feat: fy } = LANES[k];
+  const pF = since(o.featNode, t, 0.5), pM = since(o.merge, t, 0.5);
+  let g = `<line x1="0" y1="${my}" x2="${X.a}" y2="${my}" stroke="#3f3f46" stroke-width="4" stroke-dasharray="4 6"/>`;
+  g += `<line x1="${X.a}" y1="${my}" x2="${X.b}" y2="${my}" stroke="#52525b" stroke-width="4"/>`;
+  // branch-off curve and merge curve
+  g += grow(`M${X.b},${my - 14} C${X.b},${my - 60} ${X.b + 40},${fy} ${X.f - 14},${fy}`, ORANGE, easeOut(pF));
+  g += grow(`M${X.b + 14},${my} L${X.m - 14},${my}`, color, easeOut(pM));
+  g += grow(`M${X.f},${fy + 14} C${X.f},${my - 24} ${X.m - 64},${my - 12} ${X.m - 12},${my - 7}`, ORANGE, easeOut(pM));
+  // the new branch points at 7434ffb until its first commit: a dashed pointer
+  const ptr = since(o.branch, t, 0.4) * (1 - since(o.featNode, t, 0.4));
+  if (ptr > 0) g += `<path d="M${X.b},${my - 16} L${X.b},${fy} L${X.b + 20},${fy}" fill="none" stroke="${ORANGE}" stroke-width="2.5" stroke-dasharray="5 5" opacity="${ptr}"/>`;
+  // nodes: tips are filled
+  const mainTip = o.merge !== undefined && t >= o.merge ? 'm' : 'b';
+  g += node(X.a, my, color, false, undefined, t) + label(X.a, my + 40, '3108cfa', '#8b8b94');
+  g += node(X.b, my, color, mainTip === 'b', undefined, t) + label(X.b, my + 40, '7434ffb', '#8b8b94');
+  if (o.featNode !== undefined && t >= o.featNode) g += node(X.f, fy, ORANGE, true, o.featNode, t) + label(X.f, fy - 24, '17bde93', ORANGE, clamp(pF * 2), true);
+  if (o.merge !== undefined && t >= o.merge) g += node(X.m, my, color, true, o.merge, t) + label(X.m, my + 40, 'e5e29b9', color, clamp(pM * 2), true);
+  $('svg-' + k).innerHTML = g;
+
+  // tags
+  const mx = lerp(X.b, X.m, ease(pM)) + 24;
+  Reel.paintTag($('tm-' + k), 'main', color, mx, my - 17);
+  const fOp = since(o.branch, t, 0.4) * (1 - since(o.del, t, 0.5));
+  const fx = lerp(X.b + 24, X.f + 24, ease(pF));
+  Reel.paintTag($('tf-' + k), 'feature/percentage-button', ORANGE, fx, fy - 17, fOp);
+  return { mx, my, fx, fy };
+}
+
+function renderExtra(s, t) {
+  // ----- working directory: the two edits and the new % key -----
+  const ep = since(s.at.edit, t, 1.6);
+  const l1 = '+ <button …>%</button>', l2 = '+ function calculatePercentage()';
+  const n1 = Math.floor(clamp(ep / 0.45) * l1.length), n2 = Math.floor(clamp((ep - 0.5) / 0.5) * l2.length);
+  $('l1').innerHTML = ep > 0 ? `<span style="color:#4ade80">${esc(l1.slice(0, n1))}</span>` : '<span style="color:#55555d">  …</span>';
+  $('l2').innerHTML = ep > 0.5 ? `<span style="color:#4ade80">${esc(l2.slice(0, n2))}</span>` : '<span style="color:#55555d">  …</span>';
+  const mOp = (ep > 0.1 ? 1 : 0) * (1 - since(s.at.commitLand, t, 0.4));
+  $('m1').style.opacity = mOp; $('m2').style.opacity = mOp;
+  const pctIn = since(s.at.edit, t, 0.5);
+  document.querySelectorAll('#mg div').forEach(d => {
+    if (d.dataset.k === 'pct') {
+      d.style.display = pctIn > 0 ? '' : 'none';
+      d.style.background = mix('#f59e0b', '#bfdcfb', since(s.at.commitLand, t, 0.8));
+      d.style.transform = `scale(${backOut(pctIn)})`;
+    } else d.style.background = d.dataset.k === 'eq' ? '#2196f3' : '#bfdcfb';
+  });
+
+  // ----- local repository -----
+  const lo = drawRepo('lo', { branch: s.at.branch, featNode: s.at.commitLand, merge: s.at.pullLand, del: s.at.delBranch }, t);
+  // HEAD sits on main, moves to the feature tag at checkout -b, and back at checkout main
+  const toFeat = since(s.at.branch, t, 0.5) * (1 - since(s.at.checkoutMain, t, 0.5));
+  const hx = lerp(lo.mx, lo.fx, ease(toFeat)), hy = lerp(lo.my, lo.fy, ease(toFeat)) - 50;
+  $('head').style.left = (hx + 30) + 'px'; $('head').style.top = hy + 'px';
+
+  // ----- GitHub -----
+  drawRepo('re', { branch: s.at.pushLand, featNode: s.at.pushLand, merge: s.at.merge }, t);
+  const prIn = since(s.at.pr, t, 0.5);
+  $('pr').style.opacity = prIn;
+  $('pr').style.transform = `translateY(${(1 - easeOut(prIn)) * 16}px)`;
+  const merged = s.at.merge !== undefined && t >= s.at.merge;
+  const prColor = merged ? '#a371f7' : '#3fb950';
+  $('pricon').style.color = prColor;
+  $('pr').style.borderColor = s.at.pr !== undefined ? rgba(prColor, 0.55) : '#2c2c33';
+  const st = $('prst');
+  if (merged) {
+    st.textContent = 'Merged'; st.style.background = '#8957e5';
+    st.style.transform = `scale(${backOut(since(s.at.merge, t, 0.4))})`;
+  } else if (s.at.mergeBtn !== undefined && t >= s.at.mergeBtn) {
+    // the button is "pressed" just before the merge happens
+    st.textContent = 'Merge pull request'; st.style.background = '#238636';
+    const toMerge = (s.at.merge ?? Infinity) - t;
+    st.style.transform = `scale(${toMerge < 0.25 ? 0.92 : backOut(since(s.at.mergeBtn, t, 0.4))})`;
+  } else {
+    st.textContent = 'Open'; st.style.background = '#238636'; st.style.transform = 'none';
+  }
+  // review: highlight "2 files +15"
+  const rv = s.at.review !== undefined && s.step === 4 ? 0.5 + 0.5 * Math.sin((t - s.at.review) * 5) : 0;
+  $('files').style.color = s.at.review !== undefined ? '#4ade80' : '#8b8b94';
+  $('files').style.background = `rgba(74,222,128,${0.08 + 0.18 * rv * (s.step === 4 ? 1 : 0)})`;
+  $('files').style.borderRadius = '6px'; $('files').style.padding = '2px 6px';
+}
+
+Reel.finish(renderExtra);
+</script>
+</body>
+</html>
