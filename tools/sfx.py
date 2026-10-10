@@ -71,7 +71,7 @@ def chime():
 # Fixed peak level for each sound (1.0 = full scale). No overall normalization,
 # so adding or removing one kind of sound never changes the loudness of the others.
 LEVEL = {"whoosh": 0.07, "land": 0.22, "step": 0.08, "chime": 0.22}
-LAND_F = {1: 659.25, 2: 783.99, 3: 1046.5}
+LAND_F = {0: 523.25, 1: 659.25, 2: 783.99, 3: 1046.5}  # pitch by card index
 for e in meta["sounds"]:
     k = e["k"]
     if k == "whoosh":
