@@ -17,6 +17,8 @@
    - 勾選 `Add a README file`
 4. 點擊 `Create repository`
 
+> **注意**：GitHub 免費帳號的 Private repository 不能使用 GitHub Pages（1.5）。如果要完成 1.5，請改選 `Public`，或先申請 [GitHub Student Developer Pack](https://education.github.com/pack)（內含 GitHub Pro，Private repository 也能使用 Pages）。
+
 ### 1.2 Clone Repository到本地
 
 ```bash
@@ -219,8 +221,8 @@ git push origin main
 1. 前往GitHub repository頁面
 2. 點擊 `Settings`
 3. 在左側選單找到 `Pages`
-4. 在 `Source` 下拉選單中選擇 `main` branch
-5. 點擊 `Save`
+4. 在 `Build and deployment` 的 `Source` 選擇 `Deploy from a branch`
+5. 在 `Branch` 下拉選單選擇 `main`，資料夾選 `/ (root)`，再點擊 `Save`
 6. 等待幾分鐘後，訪問 `https://your-username.github.io/calculator-app/`
 
 ---
@@ -329,6 +331,8 @@ git branch
 <button onclick="appendToDisplay('/')">/</button>
 <button onclick="appendToDisplay('*')">*</button>
 ```
+
+> **說明**：按鈕區每一排有 4 格。加上 % 按鈕後，`←` 會被擠到第二排，後面的按鈕也會依序往後移一格。這是正常的結果，計算功能不受影響。
 
 修改 `script.js`，增加百分比計算函數：
 
@@ -457,17 +461,19 @@ git log --oneline
 # 查看最近3個commit
 git log --oneline -3
 
-# 輸出範例：
-# a1b2c3d (HEAD -> main) Update script (contains bug)
-# e4f5g6h Add percentage calculation button
-# i7j8k9l Update button colors to blue theme
+# 輸出範例（你的 commit 編號會不同）：
+# 361b398 (HEAD -> main, origin/main) Update script (contains bug)
+# e5e29b9 Merge pull request #1 from your-username/feature/percentage-button
+# 17bde93 Add percentage calculation button
+#
+# 361b398 是有錯誤的 commit；它前面的 e5e29b9 是步驟 3 合併 PR 產生的 commit
 ```
 
 ### 4.4 方法一：使用git revert（推薦）
 
 ```bash
 # 撤銷最新的commit（使用commit ID）
-git revert a1b2c3d
+git revert 361b398
 
 # 或者撤銷最新的commit（使用HEAD）
 git revert HEAD
@@ -485,20 +491,24 @@ git log --oneline
 
 ### 4.5 方法二：使用git reset（謹慎使用）
 
+> **注意**：4.4 和 4.5 是兩種不同的方法，擇一使用即可。如果已經做了 4.4 的 revert，再做 4.5 的 `reset --hard`，會連 revert 的 commit 一起丟掉。
+
 ```bash
 # 查看要回退到的commit ID
 git log --oneline
 
-# 軟重置：保留變更在工作區
-git reset --soft e4f5g6h
+# 以下的 e5e29b9 是出錯之前的 commit（4.3 輸出中的第二行）
+
+# 軟重置：保留變更在暫存區
+git reset --soft e5e29b9
 
 # 混合重置：保留變更在工作區，清空暫存區（預設）
-git reset --mixed e4f5g6h
+git reset --mixed e5e29b9
 # 或簡寫為
-git reset e4f5g6h
+git reset e5e29b9
 
 # 硬重置：完全刪除變更（危險！）
-git reset --hard e4f5g6h
+git reset --hard e5e29b9
 
 # 強制推送到遠端（會改寫歷史，影響其他協作者）
 git push -f origin main
@@ -692,13 +702,15 @@ git log main..feature/memory-function
 
 測試以下情境並記錄結果：
 
+> **注意**：按完 M+ 或 M- 之後，畫面上的數字不會自動清掉。這時直接輸入新數字，數字會接在後面（例如 5 後面輸入 3 會變成 53）。所以輸入新數字前，要先按 `C` 清除畫面。
+
 ```bash
 # 測試1：M+ 累加
-# 操作：輸入 5 → M+ → 輸入 3 → M+ → MR
+# 操作：輸入 5 → M+ → C → 輸入 3 → M+ → MR
 # 預期結果：顯示 8
 
 # 測試2：M- 減去
-# 操作：MC → 輸入 10 → M+ → 輸入 3 → M- → MR
+# 操作：MC → 輸入 10 → M+ → C → 輸入 3 → M- → MR
 # 預期結果：顯示 7
 
 # 測試3：MR 讀取
@@ -710,7 +722,7 @@ git log main..feature/memory-function
 # 預期結果：顯示 0
 
 # 測試5：組合使用
-# 操作：MC → 5 → M+ → 10 → M+ → 3 → M- → MR
+# 操作：MC → 5 → M+ → C → 10 → M+ → C → 3 → M- → MR
 # 預期結果：顯示 12
 ```
 
@@ -1084,6 +1096,8 @@ git checkout feature/scientific-v2
 
 方法1：使用不同的GitHub Pages分支
 
+> **注意**：一個 repository 同一時間只能用 GitHub Pages 發布**一個**分支。建立兩個分支之後，要在 `Settings` → `Pages` 的 `Branch` 輪流切換成 `gh-pages-v1`、`gh-pages-v2`，分別測試；無法同時上線兩個版本。想同時比較，請用方法2。
+
 ```bash
 # 版本1部署到gh-pages-v1分支
 git checkout feature/scientific-v1
@@ -1098,18 +1112,31 @@ git push origin gh-pages-v2
 
 方法2：本地測試
 
+在同一個資料夾裡切換分支，兩個伺服器讀到的是同一份檔案：終端機2 切到版本2 之後，終端機1 看到的也會變成版本2。所以要用 `git worktree` 把兩個版本放在不同的資料夾。
+
 ```bash
+# 先回到 main（正在使用中的分支，不能再放進另一個資料夾）
+git checkout main
+
+# 建立兩個資料夾，各放一個版本
+git worktree add ../calculator-v1 feature/scientific-v1
+git worktree add ../calculator-v2 feature/scientific-v2
+
 # 終端機1：測試版本1
-git checkout feature/scientific-v1
+cd ../calculator-v1
 python3 -m http.server 8001
 
 # 終端機2：測試版本2
-git checkout feature/scientific-v2
+cd ../calculator-v2
 python3 -m http.server 8002
 
 # 在瀏覽器分別訪問：
 # http://localhost:8001
 # http://localhost:8002
+
+# 測試完成後（按 Ctrl+C 停止伺服器），回到 calculator-app 移除這兩個資料夾
+git worktree remove ../calculator-v1
+git worktree remove ../calculator-v2
 ```
 
 ---
@@ -1141,6 +1168,8 @@ git pull origin main
 
 ### 8.3 合併選定的版本
 
+如果 main 在建立分支之後沒有新的 commit，Git 會直接把 main「快轉」（Fast-forward）到版本2 的 commit，不會產生合併 commit，也不會有衝突。
+
 ```bash
 # 合併版本2到main
 git merge feature/scientific-v2
@@ -1157,7 +1186,10 @@ git push origin main
 
 ```bash
 # 刪除本地分支
-git branch -d feature/scientific-v1
+# 版本1 沒有合併進 main，用 -d 會被拒絕：
+#   error: the branch 'feature/scientific-v1' is not fully merged.
+# 確定不要了，才用 -D 強制刪除
+git branch -D feature/scientific-v1
 git branch -d feature/scientific-v2
 
 # 刪除遠端分支
@@ -1290,8 +1322,8 @@ git remote prune origin
 # 查看reflog（操作歷史）
 git reflog
 
-# 恢復被刪除的commit
-git checkout commit-id
+# 恢復被刪除的commit：從 reflog 找到 commit-id，替它建立一個分支
+git branch recovered-work commit-id
 
 # 取消add（從暫存區移除）
 git reset HEAD file.js
