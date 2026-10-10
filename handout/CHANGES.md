@@ -26,6 +26,12 @@
 | 8.3 合併 | 加上說明：main 沒有新 commit 時，Git 會快轉（Fast-forward），不會產生合併 commit |
 | 疑難排解：恢復被刪除的 commit | `git checkout commit-id` 會進入 detached HEAD（沒有分支的狀態），改成 `git branch recovered-work commit-id`，替這個 commit 建立分支 |
 
+## 新增的內容
+
+| 段落 | 內容 |
+|---|---|
+| 延伸閱讀（講義最後） | 「git branch -d 和 -D 有什麼不同？」：說明兩者的差別、步驟 8 為什麼要用 `-D`，以及刪錯分支時怎麼救回來。8.4 也加上指向這一段的說明。救回分支的步驟已實際測試過 |
+
 ## 沒有修改，但要注意的地方
 
 - **2.1 等號按鈕的 hover 顏色**：講義寫 `#1976d2`（深藍色），calculator-app 的 commit `7434ffb` 實際用的是 `#73eb97`（綠色）。講義的藍色和其他按鈕比較搭配，所以講義不改；不同的是 calculator-app，學生照講義做不會有問題。

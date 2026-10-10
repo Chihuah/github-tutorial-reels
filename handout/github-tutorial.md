@@ -1188,7 +1188,7 @@ git push origin main
 # 刪除本地分支
 # 版本1 沒有合併進 main，用 -d 會被拒絕：
 #   error: the branch 'feature/scientific-v1' is not fully merged.
-# 確定不要了，才用 -D 強制刪除
+# 確定不要了，才用 -D 強制刪除（兩者的差別見最後的「延伸閱讀」）
 git branch -D feature/scientific-v1
 git branch -d feature/scientific-v2
 
@@ -1485,3 +1485,69 @@ git blame commit-id^ -- script.js
 5. **審查程式碼**：透過PR提升程式碼品質
 
 祝學習愉快！
+
+---
+
+## 延伸閱讀
+
+### git branch -d 和 -D 有什麼不同？
+
+兩個指令都會刪除分支。差別在於：**刪除前，Git 會不會先幫你檢查。**
+
+| 指令 | 完整寫法 | Git 會做什麼 |
+|------|---------|-------------|
+| `git branch -d` | `--delete` | 先檢查這個分支是否**已經合併**。已合併才刪除；沒有合併就拒絕。 |
+| `git branch -D` | `--delete --force` | 不檢查，直接刪除。 |
+
+#### 為什麼要檢查「有沒有合併」？
+
+分支就像貼在某個 commit 上的**名牌**。刪除分支只是撕掉名牌，commit 本身不會馬上消失。
+
+- **已經合併的分支**：它的 commit 已經是 main 歷史的一部分。撕掉名牌後，從 main 往回找，還是找得到這些 commit。所以刪除很安全，`-d` 會直接刪除。
+- **沒有合併的分支**：只有這個名牌指向它的 commit。撕掉之後，就沒有任何分支找得到這些 commit 了。所以 `-d` 會拒絕刪除，提醒你可能會失去工作成果。
+
+#### 以步驟 8 為例
+
+- **版本 2** 已經合併進 main，所以 `git branch -d feature/scientific-v2` 可以直接刪除。
+- **版本 1** 沒有合併，所以 `git branch -d feature/scientific-v1` 會出現錯誤：
+
+```bash
+error: the branch 'feature/scientific-v1' is not fully merged.
+If you are sure you want to delete it, run 'git branch -D feature/scientific-v1'
+```
+
+因為已經決定不採用版本 1，所以改用 `-D` 強制刪除。
+
+#### 使用建議
+
+- **平常一律先用 `-d`**：它是安全的做法。如果被拒絕，正好提醒你：「這個分支還有沒合併的內容，確定不要了嗎？」
+- **確定內容不要了，才用 `-D`**：例如 A/B 測試中沒有被採用的版本，或是失敗的實驗。
+
+#### 用 -D 刪錯了怎麼辦？
+
+刪除時，Git 會印出這個分支最後的 commit 編號：
+
+```bash
+$ git branch -D feature/scientific-v1
+Deleted branch feature/scientific-v1 (was 2e272ca).
+```
+
+括號裡的 `2e272ca` 就是救回分支需要的編號。用它重新建立分支即可：
+
+```bash
+git branch feature/scientific-v1 2e272ca
+```
+
+如果當時沒有記下編號，可以用 `git reflog` 找。它會列出 HEAD（目前所在位置）最近走過的每一個 commit：
+
+```bash
+$ git reflog
+0e86477 HEAD@{0}: checkout: moving from feature/scientific-v1 to main
+2e272ca HEAD@{1}: commit: Add scientific calculator - button style (v1)
+...
+```
+
+注意：
+
+- 預設情況下，大約 **30 天**內都還救得回來。之後 Git 會自動清理這些沒有分支的 commit，所以發現刪錯時要盡快處理。
+- `git reflog` 只記錄**你自己電腦上**的操作。如果分支已經 push 到 GitHub，而且 GitHub 上的分支還沒刪除，也可以從 GitHub 重新取回。
