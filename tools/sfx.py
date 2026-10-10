@@ -26,23 +26,24 @@ def env(n, a, d):
     return np.minimum(t / a, 1) * np.exp(-t / d)
 
 
-def lowpass(x, k):
-    # simple one-pole low-pass, k in (0,1): higher = brighter
-    y = np.empty_like(x); acc = 0.0
-    for i, v in enumerate(x):
-        acc += k * (v - acc); y[i] = acc
-    return y
+def norm(x):
+    return x / max(np.abs(x).max(), 1e-9)
+
+
+def band(x, lo, hi):
+    # FFT band-pass with soft edges, keeps lo..hi Hz
+    X = np.fft.rfft(x)
+    f = np.fft.rfftfreq(len(x), 1 / SR)
+    X *= np.clip((f - lo * 0.7) / (lo * 0.3), 0, 1) * np.clip((hi * 1.3 - f) / (hi * 0.3), 0, 1)
+    return np.fft.irfft(X, len(x))
 
 
 def whoosh(d):
-    n = int((d + 0.15) * SR)
+    # soft airy swish: mid/high band noise only (no low rumble), slow swell in and out
+    n = int((d + 0.2) * SR)
     t = np.arange(n) / SR
-    noise = rng.standard_normal(n)
-    shape = np.sin(np.pi * np.clip(t / (d + 0.15), 0, 1)) ** 2
-    # sweep brightness by mixing two filtered copies
-    a = lowpass(noise, 0.03); b = lowpass(noise, 0.25)
-    m = np.clip(t / d, 0, 1)
-    return (a * (1 - m) * 3 + b * m * 0.9) * shape * 0.35
+    shape = np.sin(np.pi * np.clip(t / (d + 0.2), 0, 1)) ** 3
+    return norm(band(rng.standard_normal(n), 900, 5000) * shape)
 
 
 def pop(f):
@@ -67,21 +68,23 @@ def chime():
     return out
 
 
+# Fixed peak level for each sound (1.0 = full scale). No overall normalization,
+# so adding or removing one kind of sound never changes the loudness of the others.
+LEVEL = {"whoosh": 0.07, "land": 0.22, "step": 0.08, "chime": 0.22}
 LAND_F = {1: 659.25, 2: 783.99, 3: 1046.5}
 for e in meta["sounds"]:
     k = e["k"]
     if k == "whoosh":
-        add(whoosh(e["dur"]), e["t"], 0.8)
+        add(whoosh(e["dur"]), e["t"], LEVEL[k])
     elif k == "land":
-        add(pop(LAND_F[e["to"]]), e["t"], 1.0)
+        add(norm(pop(LAND_F[e["to"]])), e["t"], LEVEL[k])
     elif k == "step":
-        add(tick(), e["t"], 1.0)
+        add(norm(tick()), e["t"], LEVEL[k])
     elif k == "chime":
-        add(chime(), e["t"], 0.8)
+        add(norm(chime()), e["t"], LEVEL[k])
 
-mx = max(np.abs(L).max(), np.abs(R).max(), 1e-9)
-g = 0.7 / mx
-stereo = (np.stack([L, R], 1) * g * 32767).astype(np.int16)
+mix = np.clip(np.stack([L, R], 1), -1, 1)
+stereo = (mix * 32767).astype(np.int16)
 with wave.open(sys.argv[2], "wb") as w:
     w.setnchannels(2); w.setsampwidth(2); w.setframerate(SR); w.writeframes(stereo.tobytes())
 
