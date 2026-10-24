@@ -2,7 +2,7 @@
 
 這個 repo 放的是「GitHub 實戰教學」講義的直式教學短片，以及製作這些影片的程式。
 
-- 講義網站：<https://github-tutorial.scholarverse.cc>
+- 講義網站：<https://github-tutorial.scholaverse.cc>
 - 示範用的專案：[Chihuah/calculator-app](https://github.com/Chihuah/calculator-app)
 
 每支影片都是 **直式 9:16（1080×1920）**，適合放在手機短影音平台。影片只有轉場音效（打字時沒有聲音），另外附一份字幕檔（`.srt`），之後可以拿來配旁白。
